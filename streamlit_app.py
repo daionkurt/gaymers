@@ -95,6 +95,18 @@ BANNER_PATH = ASSETS_DIR / "gaymers_banner.svg"
 BIRTHDAY_BANNER_PATH = ASSETS_DIR / "birthday_gamer_banner.svg"
 BIRTHDAY_MIN_DATE = date(1950, 1, 1)
 BIRTHDAY_MAX_DATE = date(2100, 12, 31)
+PLATFORM_ICON_MAP = {
+    "PS4": "🎮",
+    "PS5": "🎮",
+    "Xbox One": "🟢",
+    "Xbox Series X|S": "🟢",
+    "PC": "💻",
+    "Nintendo Switch": "🕹️",
+    "Nintendo Switch 2": "🕹️",
+    "Celular": "📱",
+    "Steam Deck": "🎛️",
+    "Retro": "👾",
+}
 
 
 def initialize_app() -> None:
@@ -168,14 +180,12 @@ def apply_black_theme() -> None:
         .stSelectbox > div > div,
         .stMultiSelect > div > div,
         .stTextArea > div > div,
-        textarea,
-        input,
         [data-testid="stFileUploaderDropzone"],
         [data-testid="stExpander"],
         [data-testid="stForm"] {
             background: var(--panel-bg) !important;
             border: 1px solid var(--panel-border) !important;
-            box-shadow: inset 0 0 0 1px var(--panel-border) !important;
+            box-shadow: none !important;
             border-radius: 0.8rem !important;
             color: var(--text-main) !important;
         }
@@ -185,6 +195,9 @@ def apply_black_theme() -> None:
         .stSelectbox input,
         .stMultiSelect input,
         .stTextArea textarea {
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
             color: var(--text-main) !important;
             caret-color: #ff4fa3 !important;
         }
@@ -200,6 +213,31 @@ def apply_black_theme() -> None:
         div[data-baseweb="textarea"] > div:focus-within {
             border: 1px solid #ff4fa3 !important;
             box-shadow: 0 0 0 1px #ff4fa3 !important;
+        }
+
+        [data-baseweb="tag"] {
+            background: #ff4fa3 !important;
+            border: 0 !important;
+            border-radius: 0.6rem !important;
+            box-shadow: none !important;
+        }
+
+        [data-baseweb="tag"] * {
+            color: #ffffff !important;
+            background: transparent !important;
+        }
+
+        .rainbow-section-title {
+            margin: 0.9rem 0 0.5rem 0;
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            background: linear-gradient(90deg, #ff4fa3 0%, #ff7a59 22%, #ffd166 46%, #43d17a 68%, #4db8ff 84%, #9b5cff 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent !important;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
         }
 
         .stTextInput label,
@@ -380,6 +418,14 @@ def admin_badge(member: dict[str, Any]) -> str:
     return "🌈★ " if member.get("is_admin") else ""
 
 
+def platform_label(system: str) -> str:
+    return f"{PLATFORM_ICON_MAP.get(system, '🎲')} {system}"
+
+
+def render_rainbow_section_title(title: str) -> None:
+    st.markdown(f'<div class="rainbow-section-title">{title}</div>', unsafe_allow_html=True)
+
+
 def get_admin_pin() -> str | None:
     env_value = os.getenv("ADMIN_PIN")
     if env_value:
@@ -529,7 +575,7 @@ def render_platform_id_inputs(prefix: str, existing_values: dict[str, str]) -> d
         column = columns[index % 2]
         with column:
             values[system] = st.text_input(
-                f"ID en {system}",
+                f"ID en {platform_label(system)}",
                 value=existing_values.get(system, ""),
                 key=f"{prefix}_platform_id_{index}",
             )
@@ -823,6 +869,13 @@ def render_summary(members: list[dict[str, Any]]) -> None:
         unsafe_allow_html=True,
     )
 
+    st.info(
+        "Este espacio esta pensado primero para convivencia, retas, comunidad y buen cotorreo. "
+        "Si de manera natural nacen amistades o algo mas entre personas del grupo, no hay bronca, "
+        "pero la idea principal del grupo no es funcionar como espacio de ligue. "
+        "La prioridad es mantener un ambiente claro, relajado y ordenado para todos."
+    )
+
     banner_path = get_banner_path()
     if banner_path:
         st.image(banner_path, width="stretch")
@@ -1087,7 +1140,7 @@ def render_member_details(member: dict[str, Any]) -> None:
 
         personal_columns = st.columns(2)
         with personal_columns[0]:
-            st.markdown("### Datos personales")
+            render_rainbow_section_title("Datos personales")
             st.write(f"**Nombre:** {value_or_fallback(member.get('full_name'))}")
             st.write(f"**Apodo:** {value_or_fallback(member.get('nickname'))}")
             st.write(f"**Role:** {value_or_fallback(member.get('role'))}")
@@ -1100,7 +1153,7 @@ def render_member_details(member: dict[str, Any]) -> None:
             st.write(f"**Administrador:** {'Si' if member.get('is_admin') else 'No'}")
 
         with personal_columns[1]:
-            st.markdown("### Gustos y hobbies")
+            render_rainbow_section_title("Gustos y hobbies")
             st.write(f"**Color favorito:** {value_or_fallback(member.get('favorite_color'))}")
             st.write(f"**Comida favorita:** {value_or_fallback(member.get('favorite_food'))}")
             st.write(f"**Peliculas:** {value_or_fallback(member.get('favorite_movies'))}")
@@ -1110,16 +1163,16 @@ def render_member_details(member: dict[str, Any]) -> None:
             st.write(f"**Sistema de juego:** {value_or_fallback(member.get('gaming_system'))}")
             st.write(f"**Actualmente jugando:** {value_or_fallback(member.get('currently_playing'))}")
 
-        st.markdown("### Juego online")
+        render_rainbow_section_title("Juego online")
         platform_id_rows = parse_platform_ids_for_display(member.get("platform_ids"))
         if platform_id_rows:
             for system, player_id in platform_id_rows:
-                st.write(f"**{system}:** {player_id}")
+                st.write(f"**{platform_label(system)}:** {player_id}")
         else:
             st.write("**IDs por plataforma:** Sin dato")
         st.write(f"**Disponibilidad:** {format_availability(member)}")
 
-        st.markdown("### Contacto")
+        render_rainbow_section_title("Contacto")
         instagram_link = instagram_url(member.get("instagram"))
         if instagram_link:
             st.markdown(f"**Instagram:** [{member.get('instagram')}]({instagram_link})")
