@@ -20,8 +20,8 @@ from database import (
     update_member,
 )
 
-PAGE_TITLE = "Directorio Gaymers"
-NAV_OPTIONS = ["Resumen", "Nuevo miembro", "Directorio", "Perfil"]
+PAGE_TITLE = "Directorio Gaymers MX-GDL"
+NAV_OPTIONS = ["Resumen", "Cumpleaños", "Nuevo miembro", "Directorio", "Perfil"]
 ROLE_OPTIONS = ["", "Activo", "Pasivo", "Inter", "Side", "Asexual"]
 SEXUALITY_OPTIONS = [
     "",
@@ -91,11 +91,13 @@ MONTH_NAMES_ES = {
 }
 ASSETS_DIR = Path(__file__).parent / "assets"
 BANNER_PATH = ASSETS_DIR / "gaymers_banner.svg"
+BIRTHDAY_BANNER_PATH = ASSETS_DIR / "birthday_gamer_banner.svg"
 
 
 def initialize_app() -> None:
     st.set_page_config(page_title=PAGE_TITLE, layout="wide")
     init_db()
+    apply_black_theme()
 
     if "pending_view" in st.session_state:
         st.session_state["current_view"] = st.session_state.pop("pending_view")
@@ -106,8 +108,122 @@ def initialize_app() -> None:
     if "selected_member_id" not in st.session_state:
         st.session_state["selected_member_id"] = None
 
+    if "admin_session_member_id" not in st.session_state:
+        st.session_state["admin_session_member_id"] = None
+
     if "flash_message" not in st.session_state:
         st.session_state["flash_message"] = None
+
+
+def apply_black_theme() -> None:
+    st.markdown(
+        """
+        <style>
+        :root {
+            --app-bg: #050505;
+            --panel-bg: #111111;
+            --panel-border: #262626;
+            --text-main: #f5f5f5;
+            --text-soft: #cfcfcf;
+        }
+
+        .stApp,
+        [data-testid="stAppViewContainer"],
+        [data-testid="stHeader"],
+        [data-testid="stToolbar"] {
+            background: var(--app-bg) !important;
+            color: var(--text-main) !important;
+        }
+
+        [data-testid="stSidebar"] {
+            background: #090909 !important;
+        }
+
+        [data-testid="stSidebar"] * {
+            color: var(--text-main) !important;
+        }
+
+        [data-testid="stMetric"],
+        [data-testid="stForm"],
+        [data-testid="stExpander"],
+        [data-testid="stDataFrame"],
+        div[data-testid="stVerticalBlock"] div[style*="flex-direction: column;"] > div[data-testid="stVerticalBlockBorderWrapper"],
+        div[data-testid="stContainer"] {
+            color: var(--text-main) !important;
+        }
+
+        [data-testid="stDataFrame"],
+        div[data-baseweb="select"] > div,
+        div[data-baseweb="base-input"] > div,
+        textarea,
+        input,
+        [data-testid="stFileUploaderDropzone"],
+        [data-testid="stExpander"],
+        [data-testid="stForm"] {
+            background: var(--panel-bg) !important;
+            border-color: var(--panel-border) !important;
+            color: var(--text-main) !important;
+        }
+
+        .stMarkdown,
+        .stCaption,
+        .stText,
+        p,
+        label,
+        li,
+        h1,
+        h2,
+        h3,
+        h4 {
+            color: var(--text-main) !important;
+        }
+
+        .stCaption {
+            color: var(--text-soft) !important;
+        }
+
+        button[kind],
+        .stButton > button,
+        .stDownloadButton > button {
+            background: #181818 !important;
+            color: #ffffff !important;
+            border: 1px solid #303030 !important;
+        }
+
+        .stButton > button:hover,
+        .stDownloadButton > button:hover {
+            border-color: #ff4fa3 !important;
+            color: #ff9bc8 !important;
+        }
+
+        .gaymers-rainbow-title {
+            margin: 0 0 1.2rem 0;
+            font-size: 2rem;
+            line-height: 1.5;
+            font-weight: 900;
+            letter-spacing: 0.18em;
+            word-spacing: 0.55em;
+            background: linear-gradient(
+                90deg,
+                #e53935 0%,
+                #fb8c00 18%,
+                #fdd835 34%,
+                #43a047 50%,
+                #00acc1 66%,
+                #1e88e5 82%,
+                #8e24aa 100%
+            );
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent !important;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+            text-transform: none;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def set_flash(kind: str, message: str) -> None:
@@ -208,8 +324,31 @@ def get_banner_path() -> str | None:
     return None
 
 
+def get_birthday_banner_path() -> str | None:
+    if BIRTHDAY_BANNER_PATH.exists():
+        return str(BIRTHDAY_BANNER_PATH)
+    return None
+
+
 def admin_badge(member: dict[str, Any]) -> str:
     return "🌈★ " if member.get("is_admin") else ""
+
+
+def get_active_admin_member(members: list[dict[str, Any]]) -> dict[str, Any] | None:
+    admin_id = st.session_state.get("admin_session_member_id")
+    if not admin_id:
+        return None
+
+    for member in members:
+        if member["id"] == admin_id and member.get("is_admin"):
+            return member
+
+    st.session_state["admin_session_member_id"] = None
+    return None
+
+
+def is_admin_session_active(members: list[dict[str, Any]]) -> bool:
+    return get_active_admin_member(members) is not None
 
 
 def calculate_zodiac_sign(birthday_value: date | None) -> str | None:
@@ -278,6 +417,20 @@ def format_birthday_for_display(value: str | None) -> str:
     if parsed is None:
         return value_or_fallback(value)
     return f"{parsed.day} de {MONTH_NAMES_ES[parsed.month]}"
+
+
+def get_birthday_month(value: str | None) -> int | None:
+    parsed = parse_birthday_for_input(value)
+    if parsed is None:
+        return None
+    return parsed.month
+
+
+def get_birthday_day(value: str | None) -> int | None:
+    parsed = parse_birthday_for_input(value)
+    if parsed is None:
+        return None
+    return parsed.day
 
 
 def parse_existing_multiselect(value: str | None, allowed_options: list[str]) -> tuple[list[str], str]:
@@ -462,7 +615,6 @@ def member_table_rows(members: list[dict[str, Any]]) -> pd.DataFrame:
             {
                 "Nombre": display_name(member),
                 "Apodo": member.get("nickname") or "-",
-                "Rol": member.get("role") or "-",
                 "Edad": member.get("age") or "-",
                 "Ubicacion": member.get("location") or "-",
                 "Instagram": member.get("instagram") or "-",
@@ -474,6 +626,53 @@ def member_table_rows(members: list[dict[str, Any]]) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
+
+
+def birthday_rows_for_month(members: list[dict[str, Any]], month: int) -> pd.DataFrame:
+    rows = []
+    for member in members:
+        parsed = parse_birthday_for_input(member.get("birthday"))
+        if parsed is None or parsed.month != month:
+            continue
+        rows.append(
+            {
+                "Dia": parsed.day,
+                "Nombre": display_name(member),
+                "Apodo": member.get("nickname") or "-",
+                "Cumpleanos": format_birthday_for_display(member.get("birthday")),
+                "Instagram": member.get("instagram") or "-",
+                "Sistema de juego": member.get("gaming_system") or "-",
+            }
+        )
+
+    if not rows:
+        return pd.DataFrame()
+
+    return pd.DataFrame(sorted(rows, key=lambda item: (item["Dia"], item["Nombre"])))
+
+
+def birthday_calendar_rows(members: list[dict[str, Any]]) -> pd.DataFrame:
+    rows = []
+    for member in members:
+        parsed = parse_birthday_for_input(member.get("birthday"))
+        if parsed is None:
+            continue
+        rows.append(
+            {
+                "Mes": MONTH_NAMES_ES[parsed.month].capitalize(),
+                "Dia": parsed.day,
+                "Nombre": display_name(member),
+                "Cumpleanos": format_birthday_for_display(member.get("birthday")),
+            }
+        )
+
+    if not rows:
+        return pd.DataFrame()
+
+    month_order = {MONTH_NAMES_ES[index].capitalize(): index for index in MONTH_NAMES_ES}
+    return pd.DataFrame(
+        sorted(rows, key=lambda item: (month_order[item["Mes"]], item["Dia"], item["Nombre"]))
+    )
 
 
 def chunk_list(items: list[dict[str, Any]], size: int) -> list[list[dict[str, Any]]]:
@@ -494,6 +693,26 @@ def render_app_header(members: list[dict[str, Any]]) -> None:
     )
     st.sidebar.metric("Miembros registrados", len(members))
     st.sidebar.metric("Perfiles con foto", sum(1 for member in members if member.get("has_photo")))
+
+    admin_members = [member for member in members if member.get("is_admin")]
+    admin_options = ["Vista publica", *[member["id"] for member in admin_members]]
+    active_admin = get_active_admin_member(members)
+    admin_index = 0
+    if active_admin is not None:
+        admin_index = admin_options.index(active_admin["id"])
+
+    selected_admin_mode = st.sidebar.selectbox(
+        "Permisos",
+        options=admin_options,
+        index=admin_index,
+        format_func=lambda value: "Vista publica"
+        if value == "Vista publica"
+        else f"Admin: {display_name(next(member for member in admin_members if member['id'] == value))}",
+    )
+    st.session_state["admin_session_member_id"] = (
+        None if selected_admin_mode == "Vista publica" else selected_admin_mode
+    )
+
     st.sidebar.caption(
         "Si vas a publicar en Streamlit Cloud, configura DATABASE_URL para usar PostgreSQL."
     )
@@ -504,38 +723,13 @@ def render_app_header(members: list[dict[str, Any]]) -> None:
 
 
 def render_summary(members: list[dict[str, Any]]) -> None:
-    st.subheader("Resumen general")
-
     age_values = [member["age"] for member in members if member.get("age") is not None]
     average_age = round(sum(age_values) / len(age_values), 1) if age_values else "Sin dato"
-
-    metric_columns = st.columns(4)
-    metric_columns[0].metric("Total de miembros", len(members))
-    metric_columns[1].metric("Con foto", sum(1 for member in members if member.get("has_photo")))
-    metric_columns[2].metric("Con Instagram", sum(1 for member in members if member.get("instagram")))
-    metric_columns[3].metric("Edad promedio", average_age)
-
-    banner_path = get_banner_path()
-    if banner_path:
-        st.image(banner_path, width="stretch")
 
     st.markdown(
         """
         <div style="padding:1rem 0 1.5rem 0;">
-          <h2 style="margin:0; font-size:2rem;">
-            <span style="color:#e53935;">B</span>
-            <span style="color:#fb8c00;">i</span>
-            <span style="color:#fdd835;">e</span>
-            <span style="color:#43a047;">n</span>
-            <span style="color:#00acc1;">v</span>
-            <span style="color:#1e88e5;">e</span>
-            <span style="color:#8e24aa;">n</span>
-            <span style="color:#d81b60;">i</span>
-            <span style="color:#e53935;">d</span>
-            <span style="color:#fb8c00;">o</span>
-            <span style="color:#fdd835;">s</span>
-            a Gaymers GDL
-          </h2>
+          <h2 class="gaymers-rainbow-title">B i e n v e n i d o s   a   G a y m e r s   G D L</h2>
           <p style="margin:.5rem 0 0 0; font-size:1.05rem;">
             Comunidad para conectar, cotorrear, jugar y ubicar rapido quien anda en linea,
             con que juega y cuando se arma la reta.
@@ -544,6 +738,31 @@ def render_summary(members: list[dict[str, Any]]) -> None:
         """,
         unsafe_allow_html=True,
     )
+
+    banner_path = get_banner_path()
+    if banner_path:
+        st.image(banner_path, width="stretch")
+
+    current_month = datetime.now().month
+    st.markdown("### Cumpleanos del mes")
+    birthday_columns = st.columns([1.2, 1.8])
+    with birthday_columns[0]:
+        birthday_banner = get_birthday_banner_path()
+        if birthday_banner:
+            st.image(birthday_banner, width="stretch")
+    with birthday_columns[1]:
+        current_month_birthdays = birthday_rows_for_month(members, current_month)
+        if current_month_birthdays.empty:
+            st.info(f"En {MONTH_NAMES_ES[current_month]} no hay cumpleaneros registrados todavia.")
+        else:
+            st.caption(f"Celebremos a quienes cumplen en {MONTH_NAMES_ES[current_month]}.")
+            st.dataframe(current_month_birthdays, width="stretch", hide_index=True)
+
+    metric_columns = st.columns(4)
+    metric_columns[0].metric("Total de miembros", len(members))
+    metric_columns[1].metric("Con foto", sum(1 for member in members if member.get("has_photo")))
+    metric_columns[2].metric("Con Instagram", sum(1 for member in members if member.get("instagram")))
+    metric_columns[3].metric("Edad promedio", average_age)
 
     if not members:
         st.info("Todavia no hay miembros registrados. Puedes empezar desde la seccion 'Nuevo miembro'.")
@@ -579,13 +798,12 @@ def render_new_member_page() -> None:
         with col_left:
             full_name = st.text_input("Nombre *")
             nickname = st.text_input("Apodo")
-            is_admin = st.checkbox("Es administrador")
             age = st.selectbox("Edad", options=["", *[str(value) for value in range(18, 100)]])
             sexuality = st.selectbox("Sexualidad", options=SEXUALITY_OPTIONS)
             role = st.selectbox("Role", options=ROLE_OPTIONS)
             height_cm = st.selectbox("Altura en cm", options=["", *[str(value) for value in range(120, 231)]])
             location = st.text_input("Ubicacion")
-            birthday_value = st.date_input("Cumpleanos", value=None, format="DD/MM/YYYY")
+            birthday_value = st.date_input("Cumpleaños", value=None, format="DD/MM/YYYY")
             instagram = st.text_input("Instagram", placeholder="@usuario")
             phone = st.text_input("Celular", placeholder="33...")
             zodiac_sign = calculate_zodiac_sign(birthday_value)
@@ -645,7 +863,7 @@ def render_new_member_page() -> None:
             availability_days=availability_days,
             availability_time=availability_time,
             availability_notes=availability_notes,
-            is_admin=is_admin,
+            is_admin=False,
             uploaded_photo=uploaded_photo,
         )
         member = create_member(payload)
@@ -752,8 +970,6 @@ def render_directory_page(members: list[dict[str, Any]]) -> None:
 
                     st.markdown(f"**{display_name(member)}**")
                     st.caption(value_or_fallback(member.get("location")))
-                    if member.get("role"):
-                        st.write(f"Role: {member.get('role')}")
                     st.write(f"Sistema: {value_or_fallback(member.get('gaming_system'))}")
                     st.write(f"Jugando: {value_or_fallback(member.get('currently_playing'))}")
 
@@ -789,7 +1005,7 @@ def render_member_details(member: dict[str, Any]) -> None:
             st.write(f"**Sexualidad:** {value_or_fallback(member.get('sexuality'))}")
             st.write(f"**Altura:** {value_or_fallback(member.get('height_cm'))}")
             st.write(f"**Ubicacion:** {value_or_fallback(member.get('location'))}")
-            st.write(f"**Cumpleanos:** {format_birthday_for_display(member.get('birthday'))}")
+            st.write(f"**Cumpleaños:** {format_birthday_for_display(member.get('birthday'))}")
             st.write(f"**Signo zodiacal:** {value_or_fallback(member.get('zodiac_sign'))}")
             st.write(f"**Administrador:** {'Si' if member.get('is_admin') else 'No'}")
 
@@ -868,7 +1084,7 @@ def render_edit_member_form(member: dict[str, Any]) -> None:
                     ),
                 )
                 location = st.text_input("Ubicacion", value=member.get("location") or "")
-                birthday_value = st.date_input("Cumpleanos", value=birthday_value, format="DD/MM/YYYY")
+                birthday_value = st.date_input("Cumpleaños", value=birthday_value, format="DD/MM/YYYY")
                 instagram = st.text_input("Instagram", value=member.get("instagram") or "")
                 phone = st.text_input("Celular", value=member.get("phone") or "")
                 zodiac_sign = calculate_zodiac_sign(birthday_value)
@@ -1037,8 +1253,39 @@ def render_profile_page(members: list[dict[str, Any]]) -> None:
         return
 
     render_member_details(member)
-    render_edit_member_form(member)
-    render_delete_member(member, members)
+    if is_admin_session_active(members):
+        render_edit_member_form(member)
+        render_delete_member(member, members)
+    else:
+        st.info("Solo un administrador puede editar o eliminar perfiles.")
+
+
+def render_birthdays_page(members: list[dict[str, Any]]) -> None:
+    st.subheader("Cumpleaños")
+
+    birthday_banner = get_birthday_banner_path()
+    if birthday_banner:
+        st.image(birthday_banner, width="stretch")
+
+    if not members:
+        st.info("Todavia no hay miembros registrados.")
+        return
+
+    current_month = datetime.now().month
+    current_month_birthdays = birthday_rows_for_month(members, current_month)
+
+    st.markdown("### Cumpleañeros del mes")
+    if current_month_birthdays.empty:
+        st.info(f"En {MONTH_NAMES_ES[current_month]} no hay cumpleaneros registrados todavia.")
+    else:
+        st.dataframe(current_month_birthdays, width="stretch", hide_index=True)
+
+    st.markdown("### Calendario anual")
+    birthday_calendar = birthday_calendar_rows(members)
+    if birthday_calendar.empty:
+        st.info("Aun no hay fechas de cumpleanos registradas.")
+    else:
+        st.dataframe(birthday_calendar, width="stretch", hide_index=True)
 
 
 def main() -> None:
@@ -1050,6 +1297,8 @@ def main() -> None:
     current_view = st.session_state["current_view"]
     if current_view == "Resumen":
         render_summary(members)
+    elif current_view == "Cumpleaños":
+        render_birthdays_page(members)
     elif current_view == "Nuevo miembro":
         render_new_member_page()
     elif current_view == "Directorio":

@@ -1,0 +1,73 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="720" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1A1130"/>
+      <stop offset="1" stop-color="#11293F"/>
+    </linearGradient>
+    <linearGradient id="cake" x1="208" y1="246" x2="506" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF7EB6"/>
+      <stop offset="1" stop-color="#FFD166"/>
+    </linearGradient>
+    <linearGradient id="rainbow" x1="580" y1="0" x2="980" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F44336"/>
+      <stop offset="0.2" stop-color="#FB8C00"/>
+      <stop offset="0.4" stop-color="#FDD835"/>
+      <stop offset="0.6" stop-color="#43A047"/>
+      <stop offset="0.8" stop-color="#1E88E5"/>
+      <stop offset="1" stop-color="#8E24AA"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="720" rx="36" fill="url(#bg)"/>
+  <circle cx="1030" cy="116" r="94" fill="#4B2F72" opacity="0.55"/>
+  <circle cx="146" cy="590" r="108" fill="#0A7C86" opacity="0.3"/>
+  <circle cx="1080" cy="612" r="74" fill="#D81B60" opacity="0.24"/>
+
+  <rect x="118" y="492" width="964" height="118" rx="28" fill="#0F1626" opacity="0.88"/>
+
+  <g transform="translate(176 176)">
+    <rect x="0" y="178" width="334" height="110" rx="28" fill="#F8E9F0"/>
+    <rect x="24" y="98" width="286" height="118" rx="26" fill="url(#cake)"/>
+    <rect x="60" y="32" width="214" height="102" rx="24" fill="#FFF2F7"/>
+    <path d="M60 84C82 70 102 98 124 84C146 70 166 98 188 84C210 70 230 98 252 84C274 70 292 98 310 84V112H60V84Z" fill="#7C4DFF"/>
+    <rect x="94" y="0" width="12" height="42" rx="6" fill="#8E24AA"/>
+    <rect x="160" y="0" width="12" height="42" rx="6" fill="#00BCD4"/>
+    <rect x="226" y="0" width="12" height="42" rx="6" fill="#FF9800"/>
+    <path d="M100 0C100 -12 110 -20 118 -32C126 -20 136 -12 136 0C136 12 128 20 118 20C108 20 100 12 100 0Z" fill="#FFD166"/>
+    <path d="M166 0C166 -12 176 -20 184 -32C192 -20 202 -12 202 0C202 12 194 20 184 20C174 20 166 12 166 0Z" fill="#FFD166"/>
+    <path d="M232 0C232 -12 242 -20 250 -32C258 -20 268 -12 268 0C268 12 260 20 250 20C240 20 232 12 232 0Z" fill="#FFD166"/>
+    <circle cx="64" cy="230" r="12" fill="#FF4D6D"/>
+    <circle cx="270" cy="248" r="12" fill="#00BCD4"/>
+    <circle cx="164" cy="226" r="12" fill="#43A047"/>
+  </g>
+
+  <g transform="translate(654 164)">
+    <rect x="0" y="56" width="262" height="164" rx="48" fill="#1F263B"/>
+    <rect x="28" y="0" width="206" height="120" rx="24" fill="#2A3551"/>
+    <rect x="44" y="18" width="174" height="86" rx="16" fill="#141C32"/>
+    <path d="M88 138H116" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+    <path d="M102 124V152" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="162" cy="128" r="11" fill="#F44336"/>
+    <circle cx="190" cy="146" r="11" fill="#1E88E5"/>
+    <circle cx="162" cy="164" r="11" fill="#43A047"/>
+    <circle cx="134" cy="146" r="11" fill="#FDD835"/>
+  </g>
+
+  <rect x="626" y="86" width="386" height="12" rx="6" fill="url(#rainbow)"/>
+  <text x="626" y="154" fill="white" font-size="44" font-family="Avenir, Montserrat, sans-serif" font-weight="800">
+    Cumpleañeros Gaymers
+  </text>
+  <text x="626" y="214" fill="#D5DCF2" font-size="24" font-family="Avenir, Montserrat, sans-serif">
+    Que no se nos pase ningun nivel nuevo de vida.
+  </text>
+  <text x="626" y="258" fill="#B7C3E2" font-size="20" font-family="Avenir, Montserrat, sans-serif">
+    Revisa quien cumple este mes y arma la reta, el pastel o el after.
+  </text>
+
+  <text x="154" y="566" fill="#FFFFFF" font-size="28" font-family="Avenir, Montserrat, sans-serif" font-weight="700">
+    XP +1 desbloqueado
+  </text>
+  <text x="154" y="606" fill="#C4D0EE" font-size="20" font-family="Avenir, Montserrat, sans-serif">
+    Un cumpleaños gamer merece mensaje, juego y festejo.
+  </text>
+</svg>
