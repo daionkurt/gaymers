@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from io import BytesIO
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -110,6 +111,9 @@ def initialize_app() -> None:
 
     if "admin_session_member_id" not in st.session_state:
         st.session_state["admin_session_member_id"] = None
+
+    if "admin_unlocked" not in st.session_state:
+        st.session_state["admin_unlocked"] = False
 
     if "flash_message" not in st.session_state:
         st.session_state["flash_message"] = None
@@ -334,7 +338,25 @@ def admin_badge(member: dict[str, Any]) -> str:
     return "🌈★ " if member.get("is_admin") else ""
 
 
+def get_admin_pin() -> str | None:
+    env_value = os.getenv("ADMIN_PIN")
+    if env_value:
+        return env_value
+
+    try:
+        secret_value = st.secrets.get("ADMIN_PIN")
+        if secret_value:
+            return str(secret_value)
+    except Exception:
+        pass
+
+    return None
+
+
 def get_active_admin_member(members: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if not st.session_state.get("admin_unlocked"):
+        return None
+
     admin_id = st.session_state.get("admin_session_member_id")
     if not admin_id:
         return None
@@ -349,6 +371,11 @@ def get_active_admin_member(members: list[dict[str, Any]]) -> dict[str, Any] | N
 
 def is_admin_session_active(members: list[dict[str, Any]]) -> bool:
     return get_active_admin_member(members) is not None
+
+
+def lock_admin_session() -> None:
+    st.session_state["admin_unlocked"] = False
+    st.session_state["admin_session_member_id"] = None
 
 
 def calculate_zodiac_sign(birthday_value: date | None) -> str | None:
@@ -695,23 +722,34 @@ def render_app_header(members: list[dict[str, Any]]) -> None:
     st.sidebar.metric("Perfiles con foto", sum(1 for member in members if member.get("has_photo")))
 
     admin_members = [member for member in members if member.get("is_admin")]
-    admin_options = ["Vista publica", *[member["id"] for member in admin_members]]
+    admin_pin = get_admin_pin()
     active_admin = get_active_admin_member(members)
-    admin_index = 0
-    if active_admin is not None:
-        admin_index = admin_options.index(active_admin["id"])
 
-    selected_admin_mode = st.sidebar.selectbox(
-        "Permisos",
-        options=admin_options,
-        index=admin_index,
-        format_func=lambda value: "Vista publica"
-        if value == "Vista publica"
-        else f"Admin: {display_name(next(member for member in admin_members if member['id'] == value))}",
-    )
-    st.session_state["admin_session_member_id"] = (
-        None if selected_admin_mode == "Vista publica" else selected_admin_mode
-    )
+    st.sidebar.markdown("### Permisos")
+    if active_admin is not None:
+        st.sidebar.success(f"Admin activo: {display_name(active_admin)}")
+        if st.sidebar.button("Salir de modo admin", use_container_width=True):
+            lock_admin_session()
+            st.rerun()
+    elif not admin_members:
+        st.sidebar.info("No hay administradores marcados todavia.")
+    elif not admin_pin:
+        st.sidebar.warning("Configura `ADMIN_PIN` en Secrets para habilitar modo admin.")
+    else:
+        selected_admin_id = st.sidebar.selectbox(
+            "Entrar como",
+            options=[member["id"] for member in admin_members],
+            format_func=lambda value: display_name(next(member for member in admin_members if member["id"] == value)),
+        )
+        entered_pin = st.sidebar.text_input("ADMIN_PIN", type="password")
+        if st.sidebar.button("Entrar como admin", use_container_width=True):
+            if entered_pin == admin_pin:
+                st.session_state["admin_unlocked"] = True
+                st.session_state["admin_session_member_id"] = selected_admin_id
+                st.rerun()
+            else:
+                lock_admin_session()
+                st.sidebar.error("PIN incorrecto.")
 
     st.sidebar.caption(
         "Si vas a publicar en Streamlit Cloud, configura DATABASE_URL para usar PostgreSQL."
@@ -1253,8 +1291,8 @@ def render_profile_page(members: list[dict[str, Any]]) -> None:
         return
 
     render_member_details(member)
+    render_edit_member_form(member)
     if is_admin_session_active(members):
-        render_edit_member_form(member)
         render_delete_member(member, members)
     else:
         st.info("Solo un administrador puede editar o eliminar perfiles.")
