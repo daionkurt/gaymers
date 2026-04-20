@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import html
 from datetime import date, datetime
 from io import BytesIO
 import json
@@ -311,6 +313,61 @@ def apply_black_theme() -> None:
             display: inline-block;
             text-transform: none;
         }
+
+        .birthday-card {
+            background: linear-gradient(180deg, #161616 0%, #0d0d0d 100%);
+            border: 1px solid #2b2b2b;
+            border-radius: 1rem;
+            overflow: hidden;
+            min-height: 21rem;
+            height: 100%;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02);
+        }
+
+        .birthday-card-media {
+            height: 14.5rem;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-bottom: 1px solid #252525;
+        }
+
+        .birthday-card-fallback {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            text-align: center;
+            background:
+                radial-gradient(circle at top, rgba(255, 79, 163, 0.28), transparent 42%),
+                radial-gradient(circle at bottom right, rgba(77, 184, 255, 0.22), transparent 38%),
+                linear-gradient(135deg, #1a1a1a 0%, #101010 100%);
+            font-size: 1.02rem;
+            font-weight: 800;
+            line-height: 1.45;
+            color: #ffffff !important;
+        }
+
+        .birthday-card-body {
+            padding: 0.95rem 1rem 1.05rem 1rem;
+        }
+
+        .birthday-card-day {
+            color: #ffd166 !important;
+            font-size: 0.86rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 0.45rem;
+        }
+
+        .birthday-card-name {
+            color: #ffffff !important;
+            font-size: 1rem;
+            font-weight: 800;
+            line-height: 1.35;
+            word-break: break-word;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -567,6 +624,13 @@ def get_birthday_day(value: str | None) -> int | None:
     return parsed.day
 
 
+def photo_data_uri(photo_bytes: bytes | None, mime_type: str | None) -> str | None:
+    if not photo_bytes:
+        return None
+    encoded = base64.b64encode(photo_bytes).decode("ascii")
+    return f"data:{mime_type or 'image/jpeg'};base64,{encoded}"
+
+
 def parse_existing_multiselect(value: str | None, allowed_options: list[str]) -> tuple[list[str], str]:
     selected = split_multi_value(value)
     preset = [item for item in selected if item in allowed_options]
@@ -789,6 +853,23 @@ def birthday_rows_for_month(members: list[dict[str, Any]], month: int) -> pd.Dat
     return pd.DataFrame(sorted(rows, key=lambda item: (item["Dia"], item["Nombre"])))
 
 
+def birthday_members_for_month(members: list[dict[str, Any]], month: int) -> list[dict[str, Any]]:
+    birthday_members = []
+    for member in members:
+        parsed = parse_birthday_for_input(member.get("birthday"))
+        if parsed is None or parsed.month != month:
+            continue
+        birthday_members.append(member)
+
+    return sorted(
+        birthday_members,
+        key=lambda item: (
+            get_birthday_day(item.get("birthday")) or 99,
+            display_name(item).casefold(),
+        ),
+    )
+
+
 def birthday_calendar_rows(members: list[dict[str, Any]]) -> pd.DataFrame:
     rows = []
     for member in members:
@@ -846,7 +927,7 @@ def render_app_header(members: list[dict[str, Any]]) -> None:
     st.sidebar.markdown("### Permisos")
     if active_admin is not None:
         st.sidebar.success(f"Admin activo: {display_name(active_admin)}")
-        if st.sidebar.button("Salir de modo admin", use_container_width=True):
+        if st.sidebar.button("Salir de modo admin", width="stretch"):
             lock_admin_session()
             st.rerun()
     elif not admin_members:
@@ -860,7 +941,7 @@ def render_app_header(members: list[dict[str, Any]]) -> None:
             format_func=lambda value: display_name(next(member for member in admin_members if member["id"] == value)),
         )
         entered_pin = st.sidebar.text_input("ADMIN_PIN", type="password")
-        if st.sidebar.button("Entrar como admin", use_container_width=True):
+        if st.sidebar.button("Entrar como admin", width="stretch"):
             if entered_pin == admin_pin:
                 st.session_state["admin_unlocked"] = True
                 st.session_state["admin_session_member_id"] = selected_admin_id
@@ -910,12 +991,12 @@ def render_summary(members: list[dict[str, Any]]) -> None:
         if birthday_banner:
             st.image(birthday_banner, width="stretch")
     with birthday_columns[1]:
-        current_month_birthdays = birthday_rows_for_month(members, current_month)
-        if current_month_birthdays.empty:
+        current_month_birthdays = birthday_members_for_month(members, current_month)
+        if not current_month_birthdays:
             st.info(f"En {MONTH_NAMES_ES[current_month]} no hay cumpleaneros registrados todavia.")
         else:
             st.caption(f"Celebremos a quienes cumplen en {MONTH_NAMES_ES[current_month]}.")
-            st.dataframe(current_month_birthdays, width="stretch", hide_index=True)
+            render_birthday_cards(current_month_birthdays)
 
     metric_columns = st.columns(4)
     metric_columns[0].metric("Total de miembros", len(members))
@@ -1198,10 +1279,40 @@ def render_member_details(member: dict[str, Any]) -> None:
         instagram_link = instagram_url(member.get("instagram"))
         if instagram_link:
             st.markdown(f"**Instagram:** [{member.get('instagram')}]({instagram_link})")
-            st.link_button("Abrir Instagram", instagram_link, use_container_width=False)
+            st.link_button("Abrir Instagram", instagram_link, width="content")
         else:
             st.write("**Instagram:** Sin dato")
         st.write(f"**Celular:** {value_or_fallback(member.get('phone'))}")
+
+
+def render_birthday_cards(members: list[dict[str, Any]]) -> None:
+    for group in chunk_list(members, 4):
+        columns = st.columns(len(group))
+        for column, member in zip(columns, group):
+            with column:
+                name = html.escape(display_name(member))
+                birthday_text = html.escape(format_birthday_for_display(member.get("birthday")))
+                photo_uri = photo_data_uri(member.get("photo_bytes"), member.get("photo_mime_type"))
+                if photo_uri:
+                    media_html = (
+                        f'<div class="birthday-card-media" '
+                        f'style="background-image:url(\'{photo_uri}\');"></div>'
+                    )
+                else:
+                    media_html = f'<div class="birthday-card-media birthday-card-fallback">{name}</div>'
+
+                st.markdown(
+                    (
+                        '<div class="birthday-card">'
+                        f"{media_html}"
+                        '<div class="birthday-card-body">'
+                        f'<div class="birthday-card-day">{birthday_text}</div>'
+                        f'<div class="birthday-card-name">{name}</div>'
+                        "</div>"
+                        "</div>"
+                    ),
+                    unsafe_allow_html=True,
+                )
 
 
 def render_edit_member_form(member: dict[str, Any]) -> None:
@@ -1421,8 +1532,8 @@ def render_profile_page(members: list[dict[str, Any]]) -> None:
         return
 
     render_member_details(member)
-    render_edit_member_form(member)
     if is_admin_session_active(members):
+        render_edit_member_form(member)
         render_delete_member(member, members)
     else:
         st.info("Solo un administrador puede editar o eliminar perfiles.")
@@ -1440,13 +1551,13 @@ def render_birthdays_page(members: list[dict[str, Any]]) -> None:
         return
 
     current_month = datetime.now().month
-    current_month_birthdays = birthday_rows_for_month(members, current_month)
+    current_month_birthdays = birthday_members_for_month(members, current_month)
 
     st.markdown("### Cumpleañeros del mes")
-    if current_month_birthdays.empty:
+    if not current_month_birthdays:
         st.info(f"En {MONTH_NAMES_ES[current_month]} no hay cumpleaneros registrados todavia.")
     else:
-        st.dataframe(current_month_birthdays, width="stretch", hide_index=True)
+        render_birthday_cards(current_month_birthdays)
 
     st.markdown("### Calendario anual")
     birthday_calendar = birthday_calendar_rows(members)
