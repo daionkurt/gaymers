@@ -862,10 +862,6 @@ def render_app_header(members: list[dict[str, Any]]) -> None:
                 lock_admin_session()
                 st.sidebar.error("PIN incorrecto.")
 
-    st.sidebar.caption(
-        "Si vas a publicar en Streamlit Cloud, configura DATABASE_URL para usar PostgreSQL."
-    )
-
     if nav != st.session_state["current_view"]:
         st.session_state["current_view"] = nav
         st.rerun()
@@ -923,24 +919,31 @@ def render_summary(members: list[dict[str, Any]]) -> None:
     if not members:
         st.info("Todavia no hay miembros registrados. Puedes empezar desde la seccion 'Nuevo miembro'.")
     else:
-        st.markdown("### Ultimos registros")
-        latest_members = sorted(
+        st.markdown("### Miembros en orden alfabetico")
+        alphabetical_members = sorted(
             members,
-            key=lambda item: item.get("created_at") or 0,
-            reverse=True,
-        )[:5]
-        latest_df = member_table_rows(latest_members)
-        st.dataframe(latest_df, width="stretch", hide_index=True)
+            key=lambda item: ((item.get("full_name") or "").casefold(), (item.get("nickname") or "").casefold()),
+        )
+        alphabetical_df = member_table_rows(alphabetical_members)
+        st.dataframe(alphabetical_df, width="stretch", hide_index=True)
 
-    admins = [member for member in members if member.get("is_admin")]
+    admins = sorted(
+        [member for member in members if member.get("is_admin")],
+        key=lambda item: ((item.get("full_name") or "").casefold(), (item.get("nickname") or "").casefold()),
+    )
     st.markdown("### Administradores")
     if not admins:
         st.info("Todavia no hay administradores marcados.")
     else:
         for admin in admins:
-            st.write(
-                f"{display_name(admin)} | {value_or_fallback(admin.get('phone'))} | "
-                f"{value_or_fallback(admin.get('instagram'))}"
+            instagram_link = instagram_url(admin.get("instagram"))
+            instagram_text = (
+                f"[{admin.get('instagram')}]({instagram_link})"
+                if instagram_link
+                else value_or_fallback(admin.get("instagram"))
+            )
+            st.markdown(
+                f"{display_name(admin)} | {value_or_fallback(admin.get('phone'))} | {instagram_text}"
             )
 
 
@@ -1132,6 +1135,9 @@ def render_directory_page(members: list[dict[str, Any]]) -> None:
                     st.caption(value_or_fallback(member.get("location")))
                     st.write(f"Sistema: {value_or_fallback(member.get('gaming_system'))}")
                     st.write(f"Jugando: {value_or_fallback(member.get('currently_playing'))}")
+                    instagram_link = instagram_url(member.get("instagram"))
+                    if instagram_link:
+                        st.markdown(f"[Instagram]({instagram_link})")
 
                     if st.button("Ver perfil", key=f"open_profile_{member['id']}"):
                         open_member_profile(member["id"])
@@ -1191,6 +1197,7 @@ def render_member_details(member: dict[str, Any]) -> None:
         instagram_link = instagram_url(member.get("instagram"))
         if instagram_link:
             st.markdown(f"**Instagram:** [{member.get('instagram')}]({instagram_link})")
+            st.link_button("Abrir Instagram", instagram_link, use_container_width=False)
         else:
             st.write("**Instagram:** Sin dato")
         st.write(f"**Celular:** {value_or_fallback(member.get('phone'))}")
