@@ -23,7 +23,6 @@ from database import (
 
 PAGE_TITLE = "Directorio Gaymers MX-GDL"
 NAV_OPTIONS = ["Resumen", "Cumpleaños", "Nuevo miembro", "Directorio", "Perfil"]
-ROLE_OPTIONS = ["", "Activo", "Pasivo", "Inter", "Side", "Asexual"]
 SEXUALITY_OPTIONS = [
     "",
     "Gay",
@@ -171,15 +170,6 @@ def apply_black_theme() -> None:
         }
 
         [data-testid="stDataFrame"],
-        div[data-baseweb="select"] > div,
-        div[data-baseweb="base-input"] > div,
-        div[data-baseweb="input"] > div,
-        div[data-baseweb="textarea"] > div,
-        .stTextInput > div > div,
-        .stDateInput > div > div,
-        .stSelectbox > div > div,
-        .stMultiSelect > div > div,
-        .stTextArea > div > div,
         [data-testid="stFileUploaderDropzone"],
         [data-testid="stExpander"],
         [data-testid="stForm"] {
@@ -188,6 +178,22 @@ def apply_black_theme() -> None:
             box-shadow: none !important;
             border-radius: 0.8rem !important;
             color: var(--text-main) !important;
+        }
+
+        div[data-baseweb="select"] > div,
+        div[data-baseweb="base-input"] > div,
+        div[data-baseweb="input"] > div,
+        div[data-baseweb="textarea"] > div,
+        .stTextInput > div > div,
+        .stDateInput > div > div,
+        .stSelectbox > div > div,
+        .stMultiSelect > div > div,
+        .stTextArea > div > div {
+            background: var(--panel-bg) !important;
+            border: 1px solid var(--panel-border) !important;
+            box-shadow: none !important;
+            border-radius: 0.8rem !important;
+            overflow: hidden !important;
         }
 
         .stTextInput input,
@@ -220,6 +226,8 @@ def apply_black_theme() -> None:
             border: 0 !important;
             border-radius: 0.6rem !important;
             box-shadow: none !important;
+            margin: 0.2rem 0.15rem 0.2rem 0 !important;
+            padding: 0.05rem 0.15rem !important;
         }
 
         [data-baseweb="tag"] * {
@@ -424,6 +432,17 @@ def platform_label(system: str) -> str:
 
 def render_rainbow_section_title(title: str) -> None:
     st.markdown(f'<div class="rainbow-section-title">{title}</div>', unsafe_allow_html=True)
+
+
+def render_member_profile_title(member: dict[str, Any]) -> None:
+    crown = ""
+    if member.get("is_admin"):
+        crown = ' <span title="Admin del grupo" style="font-size:0.95em;">👑</span>'
+
+    st.markdown(
+        f'<h2 style="margin:0 0 0.35rem 0;">{display_name(member)}{crown}</h2>',
+        unsafe_allow_html=True,
+    )
 
 
 def get_admin_pin() -> str | None:
@@ -652,7 +671,7 @@ def build_member_payload(
     nickname: str,
     age: Any,
     sexuality: str,
-    role: str,
+    role: str = "",
     height_cm: Any,
     location: str,
     favorite_color: str,
@@ -937,7 +956,6 @@ def render_new_member_page() -> None:
             nickname = st.text_input("Apodo")
             age = st.selectbox("Edad", options=["", *[str(value) for value in range(10, 100)]])
             sexuality = st.selectbox("Sexualidad", options=SEXUALITY_OPTIONS)
-            role = st.selectbox("Role", options=ROLE_OPTIONS)
             height_cm = st.selectbox("Altura en cm", options=["", *[str(value) for value in range(120, 231)]])
             location = st.text_input("Ubicacion")
             birthday_value = st.date_input(
@@ -986,7 +1004,6 @@ def render_new_member_page() -> None:
             nickname=nickname,
             age=age,
             sexuality=sexuality,
-            role=role,
             height_cm=height_cm,
             location=location,
             favorite_color=favorite_color,
@@ -1136,21 +1153,19 @@ def render_member_details(member: dict[str, Any]) -> None:
         st.caption(f"Ultima actualizacion: {format_date(member.get('updated_at'))}")
 
     with info_column:
-        st.subheader(display_name(member))
+        render_member_profile_title(member)
 
         personal_columns = st.columns(2)
         with personal_columns[0]:
             render_rainbow_section_title("Datos personales")
             st.write(f"**Nombre:** {value_or_fallback(member.get('full_name'))}")
             st.write(f"**Apodo:** {value_or_fallback(member.get('nickname'))}")
-            st.write(f"**Role:** {value_or_fallback(member.get('role'))}")
             st.write(f"**Edad:** {value_or_fallback(member.get('age'))}")
             st.write(f"**Sexualidad:** {value_or_fallback(member.get('sexuality'))}")
             st.write(f"**Altura:** {value_or_fallback(member.get('height_cm'))}")
             st.write(f"**Ubicacion:** {value_or_fallback(member.get('location'))}")
             st.write(f"**Cumpleaños:** {format_birthday_for_display(member.get('birthday'))}")
             st.write(f"**Signo zodiacal:** {value_or_fallback(member.get('zodiac_sign'))}")
-            st.write(f"**Administrador:** {'Si' if member.get('is_admin') else 'No'}")
 
         with personal_columns[1]:
             render_rainbow_section_title("Gustos y hobbies")
@@ -1213,11 +1228,6 @@ def render_edit_member_form(member: dict[str, Any]) -> None:
                     index=SEXUALITY_OPTIONS.index(member.get("sexuality"))
                     if member.get("sexuality") in SEXUALITY_OPTIONS
                     else 0,
-                )
-                role = st.selectbox(
-                    "Role",
-                    options=ROLE_OPTIONS,
-                    index=parse_existing_choice(member.get("role"), ROLE_OPTIONS),
                 )
                 height_cm = st.selectbox(
                     "Altura en cm",
@@ -1309,7 +1319,7 @@ def render_edit_member_form(member: dict[str, Any]) -> None:
                 nickname=nickname,
                 age=age,
                 sexuality=sexuality,
-                role=role,
+                role=member.get("role") or "",
                 height_cm=height_cm,
                 location=location,
                 favorite_color=favorite_color,
