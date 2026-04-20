@@ -423,7 +423,7 @@ def get_birthday_banner_path() -> str | None:
 
 
 def admin_badge(member: dict[str, Any]) -> str:
-    return "🌈★ " if member.get("is_admin") else ""
+    return "" if member.get("is_admin") else ""
 
 
 def platform_label(system: str) -> str:
