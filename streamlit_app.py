@@ -441,6 +441,14 @@ def apply_black_theme() -> None:
             word-break: break-word;
         }
 
+        .switch-birthday-age {
+            margin-top: 0.45rem;
+            color: #bfbfbf !important;
+            font-size: 0.92rem;
+            font-weight: 700;
+            line-height: 1.3;
+        }
+
         @media (max-width: 900px) {
             .switch-birthday-shell {
                 grid-template-columns: 3.8rem minmax(0, 1fr) 3.8rem;
@@ -705,6 +713,20 @@ def get_birthday_day(value: str | None) -> int | None:
     if parsed is None:
         return None
     return parsed.day
+
+
+def birthday_age_this_year(member: dict[str, Any], reference_year: int | None = None) -> int | None:
+    birthday = parse_birthday_for_input(member.get("birthday"))
+    if birthday is None:
+        return None
+
+    if reference_year is None:
+        reference_year = datetime.now().year
+
+    if birthday.year >= reference_year:
+        return None
+
+    return reference_year - birthday.year
 
 
 def photo_data_uri(photo_bytes: bytes | None, mime_type: str | None) -> str | None:
@@ -1369,33 +1391,47 @@ def render_member_details(member: dict[str, Any]) -> None:
 
 
 def render_birthday_cards(members: list[dict[str, Any]]) -> None:
-    for member in members:
-        name = html.escape(display_name(member))
-        birthday_text = html.escape(format_birthday_for_display(member.get("birthday")).upper())
-        photo_uri = photo_data_uri(member.get("photo_bytes"), member.get("photo_mime_type"))
-        if photo_uri:
-            screen_html = f'<div class="switch-screen" style="background-image:url(\'{photo_uri}\');"></div>'
-        else:
-            screen_html = f'<div class="switch-screen switch-screen-fallback">{name}</div>'
+    for group in chunk_list(members, 3):
+        columns = st.columns(3)
 
-        st.markdown(
-            (
-                '<div class="switch-birthday-card">'
-                '<div class="switch-birthday-shell">'
-                '<div class="switch-joycon switch-joycon-left"></div>'
-                '<div class="switch-screen-wrap">'
-                f"{screen_html}"
-                "</div>"
-                '<div class="switch-joycon switch-joycon-right"></div>'
-                "</div>"
-                '<div class="switch-birthday-caption">'
-                f'<div class="switch-birthday-day">{birthday_text}</div>'
-                f'<div class="switch-birthday-name">{name}</div>'
-                "</div>"
-                "</div>"
-            ),
-            unsafe_allow_html=True,
-        )
+        for index, column in enumerate(columns):
+            if index >= len(group):
+                continue
+
+            member = group[index]
+            with column:
+                name = html.escape(display_name(member))
+                birthday_text = html.escape(format_birthday_for_display(member.get("birthday")).upper())
+                turning_age = birthday_age_this_year(member)
+                age_text = ""
+                if turning_age is not None:
+                    age_text = f'<div class="switch-birthday-age">Cumple {turning_age} años</div>'
+
+                photo_uri = photo_data_uri(member.get("photo_bytes"), member.get("photo_mime_type"))
+                if photo_uri:
+                    screen_html = f'<div class="switch-screen" style="background-image:url(\'{photo_uri}\');"></div>'
+                else:
+                    screen_html = f'<div class="switch-screen switch-screen-fallback">{name}</div>'
+
+                st.markdown(
+                    (
+                        '<div class="switch-birthday-card">'
+                        '<div class="switch-birthday-shell">'
+                        '<div class="switch-joycon switch-joycon-left"></div>'
+                        '<div class="switch-screen-wrap">'
+                        f"{screen_html}"
+                        "</div>"
+                        '<div class="switch-joycon switch-joycon-right"></div>'
+                        "</div>"
+                        '<div class="switch-birthday-caption">'
+                        f'<div class="switch-birthday-day">{birthday_text}</div>'
+                        f'<div class="switch-birthday-name">{name}</div>'
+                        f"{age_text}"
+                        "</div>"
+                        "</div>"
+                    ),
+                    unsafe_allow_html=True,
+                )
 
 
 def render_edit_member_form(member: dict[str, Any]) -> None:
