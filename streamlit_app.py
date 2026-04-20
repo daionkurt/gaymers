@@ -314,59 +314,142 @@ def apply_black_theme() -> None:
             text-transform: none;
         }
 
-        .birthday-card {
-            background: linear-gradient(180deg, #161616 0%, #0d0d0d 100%);
-            border: 1px solid #2b2b2b;
-            border-radius: 1rem;
+        .switch-birthday-card {
+            margin: 0 0 1rem 0;
+            border-radius: 1.45rem;
             overflow: hidden;
-            min-height: 21rem;
-            height: 100%;
-            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02);
+            border: 1px solid #2b2b2b;
+            background: linear-gradient(180deg, #101010 0%, #090909 100%);
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
         }
 
-        .birthday-card-media {
-            height: 14.5rem;
+        .switch-birthday-shell {
+            display: grid;
+            grid-template-columns: 5.2rem minmax(0, 1fr) 5.2rem;
+            gap: 0;
+            background: #0b0b0b;
+        }
+
+        .switch-joycon {
+            position: relative;
+            min-height: 18rem;
+            overflow: hidden;
+        }
+
+        .switch-joycon-left {
+            background: linear-gradient(180deg, #00c7ff 0%, #008fd9 100%);
+            border-top-left-radius: 1.35rem;
+        }
+
+        .switch-joycon-right {
+            background: linear-gradient(180deg, #ff5d73 0%, #e63b57 100%);
+            border-top-right-radius: 1.35rem;
+        }
+
+        .switch-joycon::before,
+        .switch-joycon::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2.1rem;
+            height: 2.1rem;
+            border-radius: 999px;
+            background: rgba(10, 10, 10, 0.82);
+            box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+        }
+
+        .switch-joycon-left::before {
+            top: 2rem;
+        }
+
+        .switch-joycon-left::after {
+            bottom: 2.2rem;
+            width: 0.9rem;
+            height: 3.2rem;
+            border-radius: 999px;
+        }
+
+        .switch-joycon-right::before {
+            bottom: 2rem;
+        }
+
+        .switch-joycon-right::after {
+            top: 2.1rem;
+            width: 2.8rem;
+            height: 2.8rem;
+            background:
+                radial-gradient(circle at 50% 18%, rgba(10, 10, 10, 0.86) 0 0.22rem, transparent 0.24rem),
+                radial-gradient(circle at 18% 50%, rgba(10, 10, 10, 0.86) 0 0.22rem, transparent 0.24rem),
+                radial-gradient(circle at 82% 50%, rgba(10, 10, 10, 0.86) 0 0.22rem, transparent 0.24rem),
+                radial-gradient(circle at 50% 82%, rgba(10, 10, 10, 0.86) 0 0.22rem, transparent 0.24rem),
+                rgba(255, 255, 255, 0.12);
+            box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.08);
+        }
+
+        .switch-screen-wrap {
+            padding: 1rem 0;
+            background: linear-gradient(180deg, #121212 0%, #0b0b0b 100%);
+        }
+
+        .switch-screen {
+            min-height: 18rem;
+            border-radius: 1.05rem;
+            border: 0.35rem solid #1c1c1c;
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            border-bottom: 1px solid #252525;
-        }
-
-        .birthday-card-fallback {
+            background-color: #050505;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 1rem;
             text-align: center;
-            background:
-                radial-gradient(circle at top, rgba(255, 79, 163, 0.28), transparent 42%),
-                radial-gradient(circle at bottom right, rgba(77, 184, 255, 0.22), transparent 38%),
-                linear-gradient(135deg, #1a1a1a 0%, #101010 100%);
-            font-size: 1.02rem;
-            font-weight: 800;
+            padding: 1.2rem;
+            font-size: 1.18rem;
+            font-weight: 900;
             line-height: 1.45;
             color: #ffffff !important;
         }
 
-        .birthday-card-body {
-            padding: 0.95rem 1rem 1.05rem 1rem;
+        .switch-screen-fallback {
+            background-image:
+                radial-gradient(circle at top, rgba(255, 93, 115, 0.28), transparent 36%),
+                radial-gradient(circle at bottom left, rgba(0, 199, 255, 0.24), transparent 38%),
+                linear-gradient(135deg, #171717 0%, #0c0c0c 100%);
         }
 
-        .birthday-card-day {
+        .switch-birthday-caption {
+            padding: 1rem 1.15rem 1.15rem 1.15rem;
+            background: linear-gradient(180deg, #111111 0%, #0b0b0b 100%);
+            border-top: 1px solid #232323;
+        }
+
+        .switch-birthday-day {
             color: #ffd166 !important;
-            font-size: 0.86rem;
-            font-weight: 800;
-            letter-spacing: 0.08em;
+            font-size: 0.88rem;
+            font-weight: 900;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
             margin-bottom: 0.45rem;
         }
 
-        .birthday-card-name {
+        .switch-birthday-name {
             color: #ffffff !important;
-            font-size: 1rem;
-            font-weight: 800;
+            font-size: 1.1rem;
+            font-weight: 900;
             line-height: 1.35;
             word-break: break-word;
+        }
+
+        @media (max-width: 900px) {
+            .switch-birthday-shell {
+                grid-template-columns: 3.8rem minmax(0, 1fr) 3.8rem;
+            }
+
+            .switch-joycon,
+            .switch-screen {
+                min-height: 14rem;
+            }
         }
         </style>
         """,
@@ -1286,33 +1369,33 @@ def render_member_details(member: dict[str, Any]) -> None:
 
 
 def render_birthday_cards(members: list[dict[str, Any]]) -> None:
-    for group in chunk_list(members, 4):
-        columns = st.columns(len(group))
-        for column, member in zip(columns, group):
-            with column:
-                name = html.escape(display_name(member))
-                birthday_text = html.escape(format_birthday_for_display(member.get("birthday")))
-                photo_uri = photo_data_uri(member.get("photo_bytes"), member.get("photo_mime_type"))
-                if photo_uri:
-                    media_html = (
-                        f'<div class="birthday-card-media" '
-                        f'style="background-image:url(\'{photo_uri}\');"></div>'
-                    )
-                else:
-                    media_html = f'<div class="birthday-card-media birthday-card-fallback">{name}</div>'
+    for member in members:
+        name = html.escape(display_name(member))
+        birthday_text = html.escape(format_birthday_for_display(member.get("birthday")).upper())
+        photo_uri = photo_data_uri(member.get("photo_bytes"), member.get("photo_mime_type"))
+        if photo_uri:
+            screen_html = f'<div class="switch-screen" style="background-image:url(\'{photo_uri}\');"></div>'
+        else:
+            screen_html = f'<div class="switch-screen switch-screen-fallback">{name}</div>'
 
-                st.markdown(
-                    (
-                        '<div class="birthday-card">'
-                        f"{media_html}"
-                        '<div class="birthday-card-body">'
-                        f'<div class="birthday-card-day">{birthday_text}</div>'
-                        f'<div class="birthday-card-name">{name}</div>'
-                        "</div>"
-                        "</div>"
-                    ),
-                    unsafe_allow_html=True,
-                )
+        st.markdown(
+            (
+                '<div class="switch-birthday-card">'
+                '<div class="switch-birthday-shell">'
+                '<div class="switch-joycon switch-joycon-left"></div>'
+                '<div class="switch-screen-wrap">'
+                f"{screen_html}"
+                "</div>"
+                '<div class="switch-joycon switch-joycon-right"></div>'
+                "</div>"
+                '<div class="switch-birthday-caption">'
+                f'<div class="switch-birthday-day">{birthday_text}</div>'
+                f'<div class="switch-birthday-name">{name}</div>'
+                "</div>"
+                "</div>"
+            ),
+            unsafe_allow_html=True,
+        )
 
 
 def render_edit_member_form(member: dict[str, Any]) -> None:
