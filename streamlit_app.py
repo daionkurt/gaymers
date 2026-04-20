@@ -93,6 +93,8 @@ MONTH_NAMES_ES = {
 ASSETS_DIR = Path(__file__).parent / "assets"
 BANNER_PATH = ASSETS_DIR / "gaymers_banner.svg"
 BIRTHDAY_BANNER_PATH = ASSETS_DIR / "birthday_gamer_banner.svg"
+BIRTHDAY_MIN_DATE = date(1950, 1, 1)
+BIRTHDAY_MAX_DATE = date(2100, 12, 31)
 
 
 def initialize_app() -> None:
@@ -159,14 +161,53 @@ def apply_black_theme() -> None:
         [data-testid="stDataFrame"],
         div[data-baseweb="select"] > div,
         div[data-baseweb="base-input"] > div,
+        div[data-baseweb="input"] > div,
+        div[data-baseweb="textarea"] > div,
+        .stTextInput > div > div,
+        .stDateInput > div > div,
+        .stSelectbox > div > div,
+        .stMultiSelect > div > div,
+        .stTextArea > div > div,
         textarea,
         input,
         [data-testid="stFileUploaderDropzone"],
         [data-testid="stExpander"],
         [data-testid="stForm"] {
             background: var(--panel-bg) !important;
-            border-color: var(--panel-border) !important;
+            border: 1px solid var(--panel-border) !important;
+            box-shadow: inset 0 0 0 1px var(--panel-border) !important;
+            border-radius: 0.8rem !important;
             color: var(--text-main) !important;
+        }
+
+        .stTextInput input,
+        .stDateInput input,
+        .stSelectbox input,
+        .stMultiSelect input,
+        .stTextArea textarea {
+            color: var(--text-main) !important;
+            caret-color: #ff4fa3 !important;
+        }
+
+        .stTextInput > div > div:focus-within,
+        .stDateInput > div > div:focus-within,
+        .stSelectbox > div > div:focus-within,
+        .stMultiSelect > div > div:focus-within,
+        .stTextArea > div > div:focus-within,
+        div[data-baseweb="select"] > div:focus-within,
+        div[data-baseweb="base-input"] > div:focus-within,
+        div[data-baseweb="input"] > div:focus-within,
+        div[data-baseweb="textarea"] > div:focus-within {
+            border: 1px solid #ff4fa3 !important;
+            box-shadow: 0 0 0 1px #ff4fa3 !important;
+        }
+
+        .stTextInput label,
+        .stDateInput label,
+        .stSelectbox label,
+        .stMultiSelect label,
+        .stTextArea label {
+            margin-bottom: 0.35rem !important;
         }
 
         .stMarkdown,
@@ -271,7 +312,8 @@ def parse_optional_int(value: str, label: str) -> int | None:
 def parse_optional_choice(value: Any) -> int | None:
     if value in (None, ""):
         return None
-    return int(value)
+    parsed = int(value)
+    return parsed
 
 
 def split_multi_value(value: str | None) -> list[str]:
@@ -593,6 +635,10 @@ def build_member_payload(
     if not clean_name:
         raise ValueError("El nombre es obligatorio.")
 
+    parsed_age = parse_optional_choice(age)
+    if parsed_age is not None and parsed_age < 10:
+        raise ValueError("La edad minima permitida es 10.")
+
     photo_bytes = existing_member.get("photo_bytes") if existing_member else None
     photo_mime_type = existing_member.get("photo_mime_type") if existing_member else None
 
@@ -608,7 +654,7 @@ def build_member_payload(
     return {
         "full_name": clean_name,
         "nickname": nickname,
-        "age": parse_optional_choice(age),
+        "age": parsed_age,
         "sexuality": sexuality,
         "role": role,
         "height_cm": parse_optional_choice(height_cm),
@@ -836,12 +882,18 @@ def render_new_member_page() -> None:
         with col_left:
             full_name = st.text_input("Nombre *")
             nickname = st.text_input("Apodo")
-            age = st.selectbox("Edad", options=["", *[str(value) for value in range(18, 100)]])
+            age = st.selectbox("Edad", options=["", *[str(value) for value in range(10, 100)]])
             sexuality = st.selectbox("Sexualidad", options=SEXUALITY_OPTIONS)
             role = st.selectbox("Role", options=ROLE_OPTIONS)
             height_cm = st.selectbox("Altura en cm", options=["", *[str(value) for value in range(120, 231)]])
             location = st.text_input("Ubicacion")
-            birthday_value = st.date_input("Cumpleaños", value=None, format="DD/MM/YYYY")
+            birthday_value = st.date_input(
+                "Cumpleaños",
+                value=None,
+                min_value=BIRTHDAY_MIN_DATE,
+                max_value=BIRTHDAY_MAX_DATE,
+                format="DD/MM/YYYY",
+            )
             instagram = st.text_input("Instagram", placeholder="@usuario")
             phone = st.text_input("Celular", placeholder="33...")
             zodiac_sign = calculate_zodiac_sign(birthday_value)
@@ -1097,8 +1149,8 @@ def render_edit_member_form(member: dict[str, Any]) -> None:
                 is_admin = st.checkbox("Es administrador", value=bool(member.get("is_admin")))
                 age = st.selectbox(
                     "Edad",
-                    options=["", *[str(value) for value in range(18, 100)]],
-                    index=["", *[str(value) for value in range(18, 100)]].index(
+                    options=["", *[str(value) for value in range(10, 100)]],
+                    index=["", *[str(value) for value in range(10, 100)]].index(
                         str(member.get("age")) if member.get("age") is not None else ""
                     ),
                 )
@@ -1122,7 +1174,13 @@ def render_edit_member_form(member: dict[str, Any]) -> None:
                     ),
                 )
                 location = st.text_input("Ubicacion", value=member.get("location") or "")
-                birthday_value = st.date_input("Cumpleaños", value=birthday_value, format="DD/MM/YYYY")
+                birthday_value = st.date_input(
+                    "Cumpleaños",
+                    value=birthday_value,
+                    min_value=BIRTHDAY_MIN_DATE,
+                    max_value=BIRTHDAY_MAX_DATE,
+                    format="DD/MM/YYYY",
+                )
                 instagram = st.text_input("Instagram", value=member.get("instagram") or "")
                 phone = st.text_input("Celular", value=member.get("phone") or "")
                 zodiac_sign = calculate_zodiac_sign(birthday_value)
