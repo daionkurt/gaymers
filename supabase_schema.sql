@@ -1,11 +1,10 @@
 -- Directorio Gaymers
 -- SQL completo para PostgreSQL / Supabase
--- Ejecuta este archivo en el SQL Editor de Supabase.
+-- Ejecuta este archivo en instalaciones nuevas.
 
 begin;
 
 create extension if not exists pgcrypto;
-create extension if not exists pg_trgm;
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -23,6 +22,7 @@ create table if not exists public.members (
     nickname varchar(160),
     age integer,
     sexuality varchar(160),
+    role varchar(50),
     height_cm integer,
     location varchar(200),
     favorite_color varchar(120),
@@ -32,10 +32,16 @@ create table if not exists public.members (
     hobbies text,
     zodiac_sign varchar(120),
     favorite_character text,
-    gaming_system varchar(160),
+    gaming_system text,
+    platform_ids text,
     currently_playing text,
     instagram varchar(160),
+    phone varchar(50),
     birthday varchar(120),
+    availability_days text,
+    availability_time text,
+    availability_notes text,
+    is_admin boolean not null default false,
     photo_bytes bytea,
     photo_mime_type varchar(50),
     created_at timestamptz not null default timezone('utc', now()),
@@ -56,47 +62,12 @@ before update on public.members
 for each row
 execute function public.set_updated_at();
 
-create index if not exists idx_members_created_at
-    on public.members (created_at desc);
-
-create index if not exists idx_members_full_name
-    on public.members (full_name);
-
-create index if not exists idx_members_nickname
-    on public.members (nickname);
-
-create index if not exists idx_members_gaming_system
-    on public.members (gaming_system);
-
-create index if not exists idx_members_location
-    on public.members (location);
-
-create index if not exists idx_members_has_photo
-    on public.members ((photo_bytes is not null));
-
-create index if not exists idx_members_search_full_name_trgm
-    on public.members using gin (full_name gin_trgm_ops);
-
-create index if not exists idx_members_search_nickname_trgm
-    on public.members using gin (nickname gin_trgm_ops);
-
-create index if not exists idx_members_search_location_trgm
-    on public.members using gin (location gin_trgm_ops);
-
-create index if not exists idx_members_search_music_tastes_trgm
-    on public.members using gin (music_tastes gin_trgm_ops);
-
-create index if not exists idx_members_search_hobbies_trgm
-    on public.members using gin (hobbies gin_trgm_ops);
-
-create index if not exists idx_members_search_favorite_food_trgm
-    on public.members using gin (favorite_food gin_trgm_ops);
-
-create index if not exists idx_members_search_favorite_movies_trgm
-    on public.members using gin (favorite_movies gin_trgm_ops);
-
-create index if not exists idx_members_search_currently_playing_trgm
-    on public.members using gin (currently_playing gin_trgm_ops);
+create index if not exists idx_members_created_at on public.members (created_at desc);
+create index if not exists idx_members_full_name on public.members (full_name);
+create index if not exists idx_members_nickname on public.members (nickname);
+create index if not exists idx_members_role on public.members (role);
+create index if not exists idx_members_location on public.members (location);
+create index if not exists idx_members_is_admin on public.members (is_admin);
 
 create or replace view public.member_directory_view as
 select
@@ -105,6 +76,7 @@ select
     nickname,
     age,
     sexuality,
+    role,
     height_cm,
     location,
     favorite_color,
@@ -115,9 +87,15 @@ select
     zodiac_sign,
     favorite_character,
     gaming_system,
+    platform_ids,
     currently_playing,
     instagram,
+    phone,
     birthday,
+    availability_days,
+    availability_time,
+    availability_notes,
+    is_admin,
     (photo_bytes is not null) as has_photo,
     photo_mime_type,
     created_at,
@@ -125,15 +103,6 @@ select
 from public.members;
 
 comment on table public.members is
-'Miembros del grupo Gaymers con datos personales, gustos, contacto y foto en la base de datos.';
-
-comment on column public.members.photo_bytes is
-'Foto binaria del miembro, almacenada como bytea.';
-
-comment on column public.members.photo_mime_type is
-'Tipo MIME de la foto, por ejemplo image/jpeg o image/png.';
-
-comment on view public.member_directory_view is
-'Vista ligera del directorio sin exponer el binario completo de la foto.';
+'Miembros del grupo Gaymers con datos personales, gustos, contacto, disponibilidad y foto.';
 
 commit;

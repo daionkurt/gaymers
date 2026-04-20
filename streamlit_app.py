@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from datetime import date, datetime
 from io import BytesIO
+import json
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -19,11 +22,83 @@ from database import (
 
 PAGE_TITLE = "Directorio Gaymers"
 NAV_OPTIONS = ["Resumen", "Nuevo miembro", "Directorio", "Perfil"]
+ROLE_OPTIONS = ["", "Activo", "Pasivo", "Inter", "Side", "Asexual"]
+SEXUALITY_OPTIONS = [
+    "",
+    "Gay",
+    "Bisexual",
+    "Pansexual",
+    "Asexual",
+    "Queer",
+    "Otro",
+]
+MUSIC_OPTIONS = [
+    "Pop",
+    "Girly",
+    "Rock",
+    "Indie",
+    "K-pop",
+    "Electro",
+    "Daft Punk",
+    "Reggaeton",
+    "Metal",
+    "Techno",
+    "Trap",
+    "Baladas",
+    "Regional mexicano",
+    "Jazz",
+    "Clasica",
+    "Rap",
+    "Banda",
+    "Narco-corridos",
+    "En español",
+    "En inglés"
+]
+GAMING_SYSTEM_OPTIONS = [
+    "PS4",
+    "PS5",
+    "Xbox One",
+    "Xbox Series X|S",
+    "PC",
+    "Nintendo Switch",
+    "Nintendo Switch 2",
+    "Celular",
+    "Steam Deck",
+    "Retro",
+]
+DAY_OPTIONS = ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"]
+TIME_OPTIONS = [
+    "Madrugada",
+    "Manana",
+    "Tarde",
+    "Noche",
+    "Late night",
+    "Flexible",
+]
+MONTH_NAMES_ES = {
+    1: "enero",
+    2: "febrero",
+    3: "marzo",
+    4: "abril",
+    5: "mayo",
+    6: "junio",
+    7: "julio",
+    8: "agosto",
+    9: "septiembre",
+    10: "octubre",
+    11: "noviembre",
+    12: "diciembre",
+}
+ASSETS_DIR = Path(__file__).parent / "assets"
+BANNER_PATH = ASSETS_DIR / "gaymers_banner.svg"
 
 
 def initialize_app() -> None:
     st.set_page_config(page_title=PAGE_TITLE, layout="wide")
     init_db()
+
+    if "pending_view" in st.session_state:
+        st.session_state["current_view"] = st.session_state.pop("pending_view")
 
     if "current_view" not in st.session_state:
         st.session_state["current_view"] = "Resumen"
@@ -73,6 +148,173 @@ def parse_optional_int(value: str, label: str) -> int | None:
     return parsed
 
 
+def parse_optional_choice(value: Any) -> int | None:
+    if value in (None, ""):
+        return None
+    return int(value)
+
+
+def split_multi_value(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def join_multi_value(values: list[str], other_value: str = "") -> str | None:
+    combined = [value.strip() for value in values if value.strip()]
+    if other_value.strip():
+        combined.extend([item.strip() for item in other_value.split(",") if item.strip()])
+    if not combined:
+        return None
+    seen: list[str] = []
+    for value in combined:
+        if value not in seen:
+            seen.append(value)
+    return ", ".join(seen)
+
+
+def parse_json_map(value: str | None) -> dict[str, str]:
+    if not value:
+        return {}
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    return {str(key): str(item) for key, item in parsed.items() if str(item).strip()}
+
+
+def serialize_platform_ids(values: dict[str, str]) -> str | None:
+    clean_values = {key: value.strip() for key, value in values.items() if value and value.strip()}
+    if not clean_values:
+        return None
+    return json.dumps(clean_values, ensure_ascii=True, sort_keys=True)
+
+
+def parse_platform_ids_for_display(value: str | None) -> list[tuple[str, str]]:
+    data = parse_json_map(value)
+    return sorted(data.items(), key=lambda item: item[0].lower())
+
+
+def parse_existing_choice(value: Any, options: list[str]) -> int:
+    normalized = "" if value in (None, "") else str(value)
+    return options.index(normalized) if normalized in options else 0
+
+
+def get_banner_path() -> str | None:
+    if BANNER_PATH.exists():
+        return str(BANNER_PATH)
+    return None
+
+
+def admin_badge(member: dict[str, Any]) -> str:
+    return "🌈★ " if member.get("is_admin") else ""
+
+
+def calculate_zodiac_sign(birthday_value: date | None) -> str | None:
+    if birthday_value is None:
+        return None
+
+    month = birthday_value.month
+    day = birthday_value.day
+
+    zodiac_ranges = [
+        ((1, 20), (2, 18), "Acuario"),
+        ((2, 19), (3, 20), "Piscis"),
+        ((3, 21), (4, 19), "Aries"),
+        ((4, 20), (5, 20), "Tauro"),
+        ((5, 21), (6, 20), "Geminis"),
+        ((6, 21), (7, 22), "Cancer"),
+        ((7, 23), (8, 22), "Leo"),
+        ((8, 23), (9, 22), "Virgo"),
+        ((9, 23), (10, 22), "Libra"),
+        ((10, 23), (11, 21), "Escorpio"),
+        ((11, 22), (12, 21), "Sagitario"),
+        ((12, 22), (12, 31), "Capricornio"),
+        ((1, 1), (1, 19), "Capricornio"),
+    ]
+
+    for start, end, sign in zodiac_ranges:
+        if (month, day) >= start and (month, day) <= end:
+            return sign
+
+    return None
+
+
+def format_birthday_for_storage(value: date | None) -> str | None:
+    if value is None:
+        return None
+    return value.isoformat()
+
+
+def parse_birthday_for_input(value: str | None) -> date | None:
+    if not value:
+        return None
+
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        pass
+
+    normalized = value.strip().lower()
+    if " de " in normalized:
+        try:
+            day_part, month_part = normalized.split(" de ", 1)
+            day = int(day_part.strip())
+            month_lookup = {name: number for number, name in MONTH_NAMES_ES.items()}
+            month = month_lookup.get(month_part.strip())
+            if month is not None:
+                current_year = datetime.now().year
+                return date(current_year, month, day)
+        except Exception:
+            return None
+
+    return None
+
+
+def format_birthday_for_display(value: str | None) -> str:
+    parsed = parse_birthday_for_input(value)
+    if parsed is None:
+        return value_or_fallback(value)
+    return f"{parsed.day} de {MONTH_NAMES_ES[parsed.month]}"
+
+
+def parse_existing_multiselect(value: str | None, allowed_options: list[str]) -> tuple[list[str], str]:
+    selected = split_multi_value(value)
+    preset = [item for item in selected if item in allowed_options]
+    custom = ", ".join(item for item in selected if item not in allowed_options)
+    return preset, custom
+
+
+def format_availability(member: dict[str, Any]) -> str:
+    days = member.get("availability_days")
+    time_ranges = member.get("availability_time")
+    notes = member.get("availability_notes")
+
+    parts = [part for part in [days, time_ranges, notes] if part]
+    if not parts:
+        return "Sin dato"
+    return " | ".join(parts)
+
+
+def render_platform_id_inputs(prefix: str, existing_values: dict[str, str]) -> dict[str, str]:
+    st.caption("IDs de jugador por plataforma. Llena solo los que uses.")
+    values: dict[str, str] = {}
+    columns = st.columns(2)
+
+    for index, system in enumerate(GAMING_SYSTEM_OPTIONS):
+        column = columns[index % 2]
+        with column:
+            values[system] = st.text_input(
+                f"ID en {system}",
+                value=existing_values.get(system, ""),
+                key=f"{prefix}_platform_id_{index}",
+            )
+
+    return values
+
+
 def process_uploaded_photo(uploaded_file) -> tuple[bytes | None, str | None]:
     if uploaded_file is None:
         return None, None
@@ -114,8 +356,8 @@ def instagram_url(handle: str | None) -> str | None:
 def display_name(member: dict[str, Any]) -> str:
     nickname = member.get("nickname")
     if nickname:
-        return f"{nickname} ({member['full_name']})"
-    return member["full_name"]
+        return f"{admin_badge(member)}{nickname} ({member['full_name']})"
+    return f"{admin_badge(member)}{member['full_name']}"
 
 
 def value_or_fallback(value: Any, fallback: str = "Sin dato") -> str:
@@ -132,7 +374,7 @@ def format_date(value) -> str:
 
 def open_member_profile(member_id: str) -> None:
     st.session_state["selected_member_id"] = member_id
-    st.session_state["current_view"] = "Perfil"
+    st.session_state["pending_view"] = "Perfil"
     st.rerun()
 
 
@@ -140,21 +382,29 @@ def build_member_payload(
     *,
     full_name: str,
     nickname: str,
-    age: str,
+    age: Any,
     sexuality: str,
-    height_cm: str,
+    role: str,
+    height_cm: Any,
     location: str,
     favorite_color: str,
     favorite_food: str,
     favorite_movies: str,
-    music_tastes: str,
+    music_tastes: list[str],
+    music_tastes_other: str,
     hobbies: str,
-    zodiac_sign: str,
     favorite_character: str,
-    gaming_system: str,
+    gaming_system: list[str],
+    gaming_system_other: str,
+    platform_ids: dict[str, str],
     currently_playing: str,
     instagram: str,
-    birthday: str,
+    phone: str,
+    birthday_value: date | None,
+    availability_days: list[str],
+    availability_time: list[str],
+    availability_notes: str,
+    is_admin: bool,
     uploaded_photo,
     existing_member: dict[str, Any] | None = None,
     remove_photo: bool = False,
@@ -173,24 +423,33 @@ def build_member_payload(
     if uploaded_photo is not None:
         photo_bytes, photo_mime_type = process_uploaded_photo(uploaded_photo)
 
+    normalized_birthday = format_birthday_for_storage(birthday_value)
+
     return {
         "full_name": clean_name,
         "nickname": nickname,
-        "age": parse_optional_int(age, "La edad"),
+        "age": parse_optional_choice(age),
         "sexuality": sexuality,
-        "height_cm": parse_optional_int(height_cm, "La altura"),
+        "role": role,
+        "height_cm": parse_optional_choice(height_cm),
         "location": location,
         "favorite_color": favorite_color,
         "favorite_food": favorite_food,
         "favorite_movies": favorite_movies,
-        "music_tastes": music_tastes,
+        "music_tastes": join_multi_value(music_tastes, music_tastes_other),
         "hobbies": hobbies,
-        "zodiac_sign": zodiac_sign,
+        "zodiac_sign": calculate_zodiac_sign(birthday_value),
         "favorite_character": favorite_character,
-        "gaming_system": gaming_system,
+        "gaming_system": join_multi_value(gaming_system, gaming_system_other),
+        "platform_ids": serialize_platform_ids(platform_ids),
         "currently_playing": currently_playing,
         "instagram": instagram,
-        "birthday": birthday,
+        "phone": phone,
+        "birthday": normalized_birthday,
+        "availability_days": join_multi_value(availability_days),
+        "availability_time": join_multi_value(availability_time),
+        "availability_notes": availability_notes,
+        "is_admin": is_admin,
         "photo_bytes": photo_bytes,
         "photo_mime_type": photo_mime_type,
     }
@@ -201,11 +460,13 @@ def member_table_rows(members: list[dict[str, Any]]) -> pd.DataFrame:
     for member in members:
         rows.append(
             {
-                "Nombre": member["full_name"],
+                "Nombre": display_name(member),
                 "Apodo": member.get("nickname") or "-",
+                "Rol": member.get("role") or "-",
                 "Edad": member.get("age") or "-",
                 "Ubicacion": member.get("location") or "-",
                 "Instagram": member.get("instagram") or "-",
+                "Celular": member.get("phone") or "-",
                 "Sistema de juego": member.get("gaming_system") or "-",
                 "Actualmente jugando": member.get("currently_playing") or "-",
                 "Foto": "Si" if member.get("has_photo") else "No",
@@ -226,7 +487,11 @@ def render_app_header(members: list[dict[str, Any]]) -> None:
         f"Base activa: {get_database_backend()}."
     )
 
-    nav = st.sidebar.radio("Secciones", NAV_OPTIONS, key="current_view")
+    nav = st.sidebar.radio(
+        "Secciones",
+        NAV_OPTIONS,
+        index=NAV_OPTIONS.index(st.session_state["current_view"]),
+    )
     st.sidebar.metric("Miembros registrados", len(members))
     st.sidebar.metric("Perfiles con foto", sum(1 for member in members if member.get("has_photo")))
     st.sidebar.caption(
@@ -235,6 +500,7 @@ def render_app_header(members: list[dict[str, Any]]) -> None:
 
     if nav != st.session_state["current_view"]:
         st.session_state["current_view"] = nav
+        st.rerun()
 
 
 def render_summary(members: list[dict[str, Any]]) -> None:
@@ -249,6 +515,36 @@ def render_summary(members: list[dict[str, Any]]) -> None:
     metric_columns[2].metric("Con Instagram", sum(1 for member in members if member.get("instagram")))
     metric_columns[3].metric("Edad promedio", average_age)
 
+    banner_path = get_banner_path()
+    if banner_path:
+        st.image(banner_path, width="stretch")
+
+    st.markdown(
+        """
+        <div style="padding:1rem 0 1.5rem 0;">
+          <h2 style="margin:0; font-size:2rem;">
+            <span style="color:#e53935;">B</span>
+            <span style="color:#fb8c00;">i</span>
+            <span style="color:#fdd835;">e</span>
+            <span style="color:#43a047;">n</span>
+            <span style="color:#00acc1;">v</span>
+            <span style="color:#1e88e5;">e</span>
+            <span style="color:#8e24aa;">n</span>
+            <span style="color:#d81b60;">i</span>
+            <span style="color:#e53935;">d</span>
+            <span style="color:#fb8c00;">o</span>
+            <span style="color:#fdd835;">s</span>
+            a Gaymers GDL
+          </h2>
+          <p style="margin:.5rem 0 0 0; font-size:1.05rem;">
+            Comunidad para conectar, cotorrear, jugar y ubicar rapido quien anda en linea,
+            con que juega y cuando se arma la reta.
+          </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
     if not members:
         st.info("Todavia no hay miembros registrados. Puedes empezar desde la seccion 'Nuevo miembro'.")
     else:
@@ -259,33 +555,18 @@ def render_summary(members: list[dict[str, Any]]) -> None:
             reverse=True,
         )[:5]
         latest_df = member_table_rows(latest_members)
-        st.dataframe(latest_df, use_container_width=True, hide_index=True)
+        st.dataframe(latest_df, width="stretch", hide_index=True)
 
-    st.markdown("### Formato base del grupo")
-    st.code(
-        "\n".join(
-            [
-                "Nombre:",
-                "Edad:",
-                "Sexualidad:",
-                "Altura:",
-                "Ubicacion:",
-                "Color favorito:",
-                "Comida favorita:",
-                "Peliculas:",
-                "Gustos musicales:",
-                "Ocio o deporte:",
-                "Signo zodiacal:",
-                "Personaje favorito:",
-                "Sistema de juego:",
-                "Actualmente jugando:",
-                "Instagram:",
-                "Cumpleanos:",
-                "Nombre o apodo:",
-            ]
-        ),
-        language="text",
-    )
+    admins = [member for member in members if member.get("is_admin")]
+    st.markdown("### Administradores")
+    if not admins:
+        st.info("Todavia no hay administradores marcados.")
+    else:
+        for admin in admins:
+            st.write(
+                f"{display_name(admin)} | {value_or_fallback(admin.get('phone'))} | "
+                f"{value_or_fallback(admin.get('instagram'))}"
+            )
 
 
 def render_new_member_page() -> None:
@@ -298,31 +579,42 @@ def render_new_member_page() -> None:
         with col_left:
             full_name = st.text_input("Nombre *")
             nickname = st.text_input("Apodo")
-            age = st.text_input("Edad", placeholder="Ej. 36")
-            sexuality = st.text_input("Sexualidad")
-            height_cm = st.text_input("Altura en cm", placeholder="Ej. 172")
+            is_admin = st.checkbox("Es administrador")
+            age = st.selectbox("Edad", options=["", *[str(value) for value in range(18, 100)]])
+            sexuality = st.selectbox("Sexualidad", options=SEXUALITY_OPTIONS)
+            role = st.selectbox("Role", options=ROLE_OPTIONS)
+            height_cm = st.selectbox("Altura en cm", options=["", *[str(value) for value in range(120, 231)]])
             location = st.text_input("Ubicacion")
-            birthday = st.text_input("Cumpleanos", placeholder="Ej. 26 de febrero")
+            birthday_value = st.date_input("Cumpleanos", value=None, format="DD/MM/YYYY")
             instagram = st.text_input("Instagram", placeholder="@usuario")
+            phone = st.text_input("Celular", placeholder="33...")
+            zodiac_sign = calculate_zodiac_sign(birthday_value)
+            st.text_input("Signo zodiacal", value=zodiac_sign or "", disabled=True)
 
         with col_right:
             favorite_color = st.text_input("Color favorito")
             favorite_food = st.text_input("Comida favorita")
             favorite_movies = st.text_input("Peliculas o genero favorito")
-            music_tastes = st.text_input("Gustos musicales")
+            music_tastes = st.multiselect("Gustos musicales", options=MUSIC_OPTIONS)
+            music_tastes_other = st.text_input("Otros gustos musicales", placeholder="Opcional")
             hobbies = st.text_input("Ocio o deporte")
-            zodiac_sign = st.text_input("Signo zodiacal")
             favorite_character = st.text_input("Personaje favorito")
-            gaming_system = st.text_input("Sistema de juego")
+            gaming_system = st.multiselect("Sistema de juego", options=GAMING_SYSTEM_OPTIONS)
+            gaming_system_other = st.text_input("Otro sistema de juego", placeholder="Opcional")
             currently_playing = st.text_input("Actualmente jugando")
+            availability_days = st.multiselect("Dias disponibles para jugar", options=DAY_OPTIONS)
+            availability_time = st.multiselect("Horario para jugar", options=TIME_OPTIONS)
+            availability_notes = st.text_area("Notas de disponibilidad", placeholder="Ej. despues de las 9 pm")
+
+        platform_ids = render_platform_id_inputs("new_member", {})
 
         uploaded_photo = st.file_uploader(
-            "Foto del miembro",
+            "Foto de la persona",
             type=["png", "jpg", "jpeg", "webp"],
             help="La foto se guarda dentro de la base de datos.",
         )
 
-        submitted = st.form_submit_button("Guardar miembro", use_container_width=True)
+        submitted = st.form_submit_button("Guardar miembro", width="stretch")
 
     if not submitted:
         return
@@ -333,19 +625,27 @@ def render_new_member_page() -> None:
             nickname=nickname,
             age=age,
             sexuality=sexuality,
+            role=role,
             height_cm=height_cm,
             location=location,
             favorite_color=favorite_color,
             favorite_food=favorite_food,
             favorite_movies=favorite_movies,
             music_tastes=music_tastes,
+            music_tastes_other=music_tastes_other,
             hobbies=hobbies,
-            zodiac_sign=zodiac_sign,
             favorite_character=favorite_character,
             gaming_system=gaming_system,
+            gaming_system_other=gaming_system_other,
+            platform_ids=platform_ids,
             currently_playing=currently_playing,
             instagram=instagram,
-            birthday=birthday,
+            phone=phone,
+            birthday_value=birthday_value,
+            availability_days=availability_days,
+            availability_time=availability_time,
+            availability_notes=availability_notes,
+            is_admin=is_admin,
             uploaded_photo=uploaded_photo,
         )
         member = create_member(payload)
@@ -355,7 +655,7 @@ def render_new_member_page() -> None:
 
     set_flash("success", f"Se registro correctamente a {display_name(member)}.")
     st.session_state["selected_member_id"] = member["id"]
-    st.session_state["current_view"] = "Perfil"
+    st.session_state["pending_view"] = "Perfil"
     st.rerun()
 
 
@@ -374,20 +674,27 @@ def filter_members(
             for field in [
                 "full_name",
                 "nickname",
+                "role",
                 "location",
                 "favorite_food",
                 "favorite_movies",
                 "music_tastes",
                 "hobbies",
                 "gaming_system",
+                "platform_ids",
                 "currently_playing",
+                "phone",
+                "availability_days",
+                "availability_time",
+                "availability_notes",
             ]
         ).casefold()
 
         if normalized_search and normalized_search not in haystack:
             continue
 
-        if system_filter != "Todos" and (member.get("gaming_system") or "Sin dato") != system_filter:
+        member_systems = split_multi_value(member.get("gaming_system"))
+        if system_filter != "Todos" and system_filter not in member_systems:
             continue
 
         if photo_only and not member.get("has_photo"):
@@ -406,10 +713,7 @@ def render_directory_page(members: list[dict[str, Any]]) -> None:
         return
 
     gaming_systems = sorted(
-        {
-            member.get("gaming_system") or "Sin dato"
-            for member in members
-        }
+        {system for member in members for system in split_multi_value(member.get("gaming_system"))}
     )
 
     filter_columns = st.columns([2, 1, 1])
@@ -419,7 +723,7 @@ def render_directory_page(members: list[dict[str, Any]]) -> None:
     )
     system_filter = filter_columns[1].selectbox(
         "Sistema",
-        options=["Todos", *gaming_systems],
+        options=["Todos", *gaming_systems] if gaming_systems else ["Todos"],
     )
     photo_only = filter_columns[2].checkbox("Solo con foto")
 
@@ -431,7 +735,7 @@ def render_directory_page(members: list[dict[str, Any]]) -> None:
         return
 
     directory_df = member_table_rows(filtered_members)
-    st.dataframe(directory_df, use_container_width=True, hide_index=True)
+    st.dataframe(directory_df, width="stretch", hide_index=True)
 
     st.markdown("### Acceso rapido a perfiles")
     preview_members = filtered_members[:24]
@@ -442,12 +746,14 @@ def render_directory_page(members: list[dict[str, Any]]) -> None:
             with column:
                 with st.container(border=True):
                     if member.get("photo_bytes"):
-                        st.image(member["photo_bytes"], use_container_width=True)
+                        st.image(member["photo_bytes"], width="stretch")
                     else:
                         st.info("Sin foto")
 
                     st.markdown(f"**{display_name(member)}**")
                     st.caption(value_or_fallback(member.get("location")))
+                    if member.get("role"):
+                        st.write(f"Role: {member.get('role')}")
                     st.write(f"Sistema: {value_or_fallback(member.get('gaming_system'))}")
                     st.write(f"Jugando: {value_or_fallback(member.get('currently_playing'))}")
 
@@ -463,7 +769,7 @@ def render_member_details(member: dict[str, Any]) -> None:
 
     with photo_column:
         if member.get("photo_bytes"):
-            st.image(member["photo_bytes"], use_container_width=True)
+            st.image(member["photo_bytes"], width="stretch")
         else:
             st.info("Este perfil todavia no tiene foto.")
 
@@ -478,12 +784,14 @@ def render_member_details(member: dict[str, Any]) -> None:
             st.markdown("### Datos personales")
             st.write(f"**Nombre:** {value_or_fallback(member.get('full_name'))}")
             st.write(f"**Apodo:** {value_or_fallback(member.get('nickname'))}")
+            st.write(f"**Role:** {value_or_fallback(member.get('role'))}")
             st.write(f"**Edad:** {value_or_fallback(member.get('age'))}")
             st.write(f"**Sexualidad:** {value_or_fallback(member.get('sexuality'))}")
             st.write(f"**Altura:** {value_or_fallback(member.get('height_cm'))}")
             st.write(f"**Ubicacion:** {value_or_fallback(member.get('location'))}")
-            st.write(f"**Cumpleanos:** {value_or_fallback(member.get('birthday'))}")
+            st.write(f"**Cumpleanos:** {format_birthday_for_display(member.get('birthday'))}")
             st.write(f"**Signo zodiacal:** {value_or_fallback(member.get('zodiac_sign'))}")
+            st.write(f"**Administrador:** {'Si' if member.get('is_admin') else 'No'}")
 
         with personal_columns[1]:
             st.markdown("### Gustos y hobbies")
@@ -496,28 +804,75 @@ def render_member_details(member: dict[str, Any]) -> None:
             st.write(f"**Sistema de juego:** {value_or_fallback(member.get('gaming_system'))}")
             st.write(f"**Actualmente jugando:** {value_or_fallback(member.get('currently_playing'))}")
 
+        st.markdown("### Juego online")
+        platform_id_rows = parse_platform_ids_for_display(member.get("platform_ids"))
+        if platform_id_rows:
+            for system, player_id in platform_id_rows:
+                st.write(f"**{system}:** {player_id}")
+        else:
+            st.write("**IDs por plataforma:** Sin dato")
+        st.write(f"**Disponibilidad:** {format_availability(member)}")
+
         st.markdown("### Contacto")
         instagram_link = instagram_url(member.get("instagram"))
         if instagram_link:
             st.markdown(f"**Instagram:** [{member.get('instagram')}]({instagram_link})")
         else:
             st.write("**Instagram:** Sin dato")
+        st.write(f"**Celular:** {value_or_fallback(member.get('phone'))}")
 
 
 def render_edit_member_form(member: dict[str, Any]) -> None:
     with st.expander("Editar perfil", expanded=False):
+        birthday_value = parse_birthday_for_input(member.get("birthday"))
+        selected_music, custom_music = parse_existing_multiselect(member.get("music_tastes"), MUSIC_OPTIONS)
+        selected_systems, custom_systems = parse_existing_multiselect(
+            member.get("gaming_system"),
+            GAMING_SYSTEM_OPTIONS,
+        )
+        selected_days, custom_days = parse_existing_multiselect(member.get("availability_days"), DAY_OPTIONS)
+        selected_times, custom_times = parse_existing_multiselect(member.get("availability_time"), TIME_OPTIONS)
+        existing_platform_ids = parse_json_map(member.get("platform_ids"))
+
         with st.form(f"edit_member_form_{member['id']}", clear_on_submit=False):
             col_left, col_right = st.columns(2)
 
             with col_left:
                 full_name = st.text_input("Nombre *", value=member.get("full_name") or "")
                 nickname = st.text_input("Apodo", value=member.get("nickname") or "")
-                age = st.text_input("Edad", value=value_or_fallback(member.get("age"), ""))
-                sexuality = st.text_input("Sexualidad", value=member.get("sexuality") or "")
-                height_cm = st.text_input("Altura en cm", value=value_or_fallback(member.get("height_cm"), ""))
+                is_admin = st.checkbox("Es administrador", value=bool(member.get("is_admin")))
+                age = st.selectbox(
+                    "Edad",
+                    options=["", *[str(value) for value in range(18, 100)]],
+                    index=["", *[str(value) for value in range(18, 100)]].index(
+                        str(member.get("age")) if member.get("age") is not None else ""
+                    ),
+                )
+                sexuality = st.selectbox(
+                    "Sexualidad",
+                    options=SEXUALITY_OPTIONS,
+                    index=SEXUALITY_OPTIONS.index(member.get("sexuality"))
+                    if member.get("sexuality") in SEXUALITY_OPTIONS
+                    else 0,
+                )
+                role = st.selectbox(
+                    "Role",
+                    options=ROLE_OPTIONS,
+                    index=parse_existing_choice(member.get("role"), ROLE_OPTIONS),
+                )
+                height_cm = st.selectbox(
+                    "Altura en cm",
+                    options=["", *[str(value) for value in range(120, 231)]],
+                    index=["", *[str(value) for value in range(120, 231)]].index(
+                        str(member.get("height_cm")) if member.get("height_cm") is not None else ""
+                    ),
+                )
                 location = st.text_input("Ubicacion", value=member.get("location") or "")
-                birthday = st.text_input("Cumpleanos", value=member.get("birthday") or "")
+                birthday_value = st.date_input("Cumpleanos", value=birthday_value, format="DD/MM/YYYY")
                 instagram = st.text_input("Instagram", value=member.get("instagram") or "")
+                phone = st.text_input("Celular", value=member.get("phone") or "")
+                zodiac_sign = calculate_zodiac_sign(birthday_value)
+                st.text_input("Signo zodiacal", value=zodiac_sign or "", disabled=True)
 
             with col_right:
                 favorite_color = st.text_input("Color favorito", value=member.get("favorite_color") or "")
@@ -526,18 +881,45 @@ def render_edit_member_form(member: dict[str, Any]) -> None:
                     "Peliculas o genero favorito",
                     value=member.get("favorite_movies") or "",
                 )
-                music_tastes = st.text_input("Gustos musicales", value=member.get("music_tastes") or "")
+                music_tastes = st.multiselect(
+                    "Gustos musicales",
+                    options=MUSIC_OPTIONS,
+                    default=selected_music,
+                )
+                music_tastes_other = st.text_input("Otros gustos musicales", value=custom_music)
                 hobbies = st.text_input("Ocio o deporte", value=member.get("hobbies") or "")
-                zodiac_sign = st.text_input("Signo zodiacal", value=member.get("zodiac_sign") or "")
                 favorite_character = st.text_input(
                     "Personaje favorito",
                     value=member.get("favorite_character") or "",
                 )
-                gaming_system = st.text_input("Sistema de juego", value=member.get("gaming_system") or "")
+                gaming_system = st.multiselect(
+                    "Sistema de juego",
+                    options=GAMING_SYSTEM_OPTIONS,
+                    default=selected_systems,
+                )
+                gaming_system_other = st.text_input("Otro sistema de juego", value=custom_systems)
                 currently_playing = st.text_input(
                     "Actualmente jugando",
                     value=member.get("currently_playing") or "",
                 )
+                availability_days = st.multiselect(
+                    "Dias disponibles para jugar",
+                    options=DAY_OPTIONS,
+                    default=selected_days,
+                )
+                availability_days_other = st.text_input("Otros dias o notas cortas", value=custom_days)
+                availability_time = st.multiselect(
+                    "Horario para jugar",
+                    options=TIME_OPTIONS,
+                    default=selected_times,
+                )
+                availability_time_other = st.text_input("Otros horarios", value=custom_times)
+                availability_notes = st.text_area(
+                    "Notas de disponibilidad",
+                    value=member.get("availability_notes") or "",
+                )
+
+            platform_ids = render_platform_id_inputs(f"edit_member_{member['id']}", existing_platform_ids)
 
             uploaded_photo = st.file_uploader(
                 "Reemplazar foto",
@@ -551,7 +933,7 @@ def render_edit_member_form(member: dict[str, Any]) -> None:
                 key=f"remove_photo_{member['id']}",
             )
 
-            submitted = st.form_submit_button("Guardar cambios", use_container_width=True)
+            submitted = st.form_submit_button("Guardar cambios", width="stretch")
 
         if not submitted:
             return
@@ -562,19 +944,27 @@ def render_edit_member_form(member: dict[str, Any]) -> None:
                 nickname=nickname,
                 age=age,
                 sexuality=sexuality,
+                role=role,
                 height_cm=height_cm,
                 location=location,
                 favorite_color=favorite_color,
                 favorite_food=favorite_food,
                 favorite_movies=favorite_movies,
                 music_tastes=music_tastes,
+                music_tastes_other=music_tastes_other,
                 hobbies=hobbies,
-                zodiac_sign=zodiac_sign,
                 favorite_character=favorite_character,
                 gaming_system=gaming_system,
+                gaming_system_other=gaming_system_other,
+                platform_ids=platform_ids,
                 currently_playing=currently_playing,
                 instagram=instagram,
-                birthday=birthday,
+                phone=phone,
+                birthday_value=birthday_value,
+                availability_days=availability_days + split_multi_value(availability_days_other),
+                availability_time=availability_time + split_multi_value(availability_time_other),
+                availability_notes=availability_notes,
+                is_admin=is_admin,
                 uploaded_photo=uploaded_photo,
                 existing_member=member,
                 remove_photo=remove_photo,
@@ -614,7 +1004,7 @@ def render_delete_member(member: dict[str, Any], members: list[dict[str, Any]]) 
 
             remaining_members = [item for item in members if item["id"] != member["id"]]
             st.session_state["selected_member_id"] = remaining_members[0]["id"] if remaining_members else None
-            st.session_state["current_view"] = "Directorio"
+            st.session_state["pending_view"] = "Directorio"
             set_flash("warning", f"Se elimino el perfil de {display_name(member)}.")
             st.rerun()
 

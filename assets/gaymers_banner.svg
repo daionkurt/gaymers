@@ -1,0 +1,82 @@
+<svg width="1600" height="420" viewBox="0 0 1600 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#131622"/>
+      <stop offset="1" stop-color="#251538"/>
+    </linearGradient>
+    <linearGradient id="rainbow" x1="140" y1="72" x2="1240" y2="72" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F44336"/>
+      <stop offset="0.18" stop-color="#FF9800"/>
+      <stop offset="0.35" stop-color="#FFEB3B"/>
+      <stop offset="0.52" stop-color="#4CAF50"/>
+      <stop offset="0.7" stop-color="#00BCD4"/>
+      <stop offset="0.85" stop-color="#2196F3"/>
+      <stop offset="1" stop-color="#9C27B0"/>
+    </linearGradient>
+    <filter id="shadow" x="0" y="0" width="1600" height="420" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="420" rx="32" fill="url(#bg)"/>
+  <circle cx="1370" cy="92" r="160" fill="#3E2158" opacity="0.55"/>
+  <circle cx="124" cy="332" r="116" fill="#0F5A61" opacity="0.4"/>
+  <circle cx="1480" cy="332" r="96" fill="#5E162F" opacity="0.4"/>
+
+  <g opacity="0.16">
+    <path d="M0 290H1600" stroke="#FFFFFF" stroke-width="2"/>
+    <path d="M0 336H1600" stroke="#FFFFFF" stroke-width="2"/>
+    <path d="M104 0V420" stroke="#FFFFFF" stroke-width="2"/>
+    <path d="M1498 0V420" stroke="#FFFFFF" stroke-width="2"/>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="94" y="84" width="768" height="244" rx="28" fill="#0F1320" opacity="0.94"/>
+    <rect x="94" y="84" width="768" height="10" rx="5" fill="url(#rainbow)"/>
+  </g>
+
+  <text x="140" y="158" fill="white" font-size="30" font-family="Avenir, Montserrat, sans-serif" font-weight="700">
+    Bienvenidos a Gaymers GDL
+  </text>
+  <text x="140" y="212" fill="#E6ECFF" font-size="56" font-family="Avenir, Montserrat, sans-serif" font-weight="800">
+    Jugar, ligar y cotorrear
+  </text>
+  <text x="140" y="258" fill="#B9C2E4" font-size="24" font-family="Avenir, Montserrat, sans-serif">
+    Directorio del grupo para ubicar gustos, IDs de juego, horarios y contacto.
+  </text>
+  <text x="140" y="300" fill="#8FF0C7" font-size="22" font-family="Avenir, Montserrat, sans-serif" font-weight="600">
+    Switch • PS5 • Xbox • PC • Celular • Reta nocturna
+  </text>
+
+  <g transform="translate(1036 98)">
+    <rect x="0" y="56" width="284" height="162" rx="48" fill="#1F263B"/>
+    <rect x="38" y="0" width="208" height="128" rx="24" fill="#2A3551"/>
+    <rect x="58" y="18" width="168" height="92" rx="16" fill="#182238"/>
+    <circle cx="86" cy="136" r="18" fill="#00BCD4"/>
+    <circle cx="198" cy="136" r="18" fill="#9C27B0"/>
+    <circle cx="58" cy="136" r="18" fill="#FF9800"/>
+    <circle cx="226" cy="136" r="18" fill="#4CAF50"/>
+    <rect x="122" y="136" width="40" height="14" rx="7" fill="#D7DEEF"/>
+  </g>
+
+  <g transform="translate(1310 122)">
+    <rect x="0" y="0" width="198" height="126" rx="24" fill="#111827"/>
+    <rect x="22" y="20" width="154" height="86" rx="14" fill="#1D2841"/>
+    <path d="M61 62H84" stroke="#FFEB3B" stroke-width="10" stroke-linecap="round"/>
+    <path d="M72 50V74" stroke="#FFEB3B" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="131" cy="56" r="8" fill="#F44336"/>
+    <circle cx="151" cy="72" r="8" fill="#2196F3"/>
+    <circle cx="131" cy="88" r="8" fill="#4CAF50"/>
+    <circle cx="111" cy="72" r="8" fill="#FF9800"/>
+  </g>
+
+  <g transform="translate(916 258)">
+    <rect x="0" y="0" width="438" height="80" rx="24" fill="#121A2E" opacity="0.95"/>
+    <text x="28" y="34" fill="#FFFFFF" font-size="22" font-family="Avenir, Montserrat, sans-serif" font-weight="700">
+      Rainbow squad online
+    </text>
+    <text x="28" y="62" fill="#B7C3E2" font-size="18" font-family="Avenir, Montserrat, sans-serif">
+      Agenda retas, guarda perfiles y encuentra a tu duo ideal.
+    </text>
+  </g>
+</svg>

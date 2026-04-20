@@ -7,7 +7,7 @@ from datetime import datetime
 from functools import lru_cache
 from typing import Any, Iterator
 
-from sqlalchemy import DateTime, Integer, LargeBinary, String, Text, create_engine, or_, select
+from sqlalchemy import Boolean, DateTime, Integer, LargeBinary, String, Text, create_engine, inspect, or_, select, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 
@@ -23,6 +23,7 @@ class Member(Base):
     nickname: Mapped[str | None] = mapped_column(String(160))
     age: Mapped[int | None] = mapped_column(Integer)
     sexuality: Mapped[str | None] = mapped_column(String(160))
+    role: Mapped[str | None] = mapped_column(String(50))
     height_cm: Mapped[int | None] = mapped_column(Integer)
     location: Mapped[str | None] = mapped_column(String(200))
     favorite_color: Mapped[str | None] = mapped_column(String(120))
@@ -32,10 +33,16 @@ class Member(Base):
     hobbies: Mapped[str | None] = mapped_column(Text)
     zodiac_sign: Mapped[str | None] = mapped_column(String(120))
     favorite_character: Mapped[str | None] = mapped_column(Text)
-    gaming_system: Mapped[str | None] = mapped_column(String(160))
+    gaming_system: Mapped[str | None] = mapped_column(Text)
+    platform_ids: Mapped[str | None] = mapped_column(Text)
     currently_playing: Mapped[str | None] = mapped_column(Text)
     instagram: Mapped[str | None] = mapped_column(String(160))
+    phone: Mapped[str | None] = mapped_column(String(50))
     birthday: Mapped[str | None] = mapped_column(String(120))
+    availability_days: Mapped[str | None] = mapped_column(Text)
+    availability_time: Mapped[str | None] = mapped_column(Text)
+    availability_notes: Mapped[str | None] = mapped_column(Text)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     photo_bytes: Mapped[bytes | None] = mapped_column(LargeBinary)
     photo_mime_type: Mapped[str | None] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
@@ -51,6 +58,7 @@ TEXT_FIELDS = [
     "full_name",
     "nickname",
     "sexuality",
+    "role",
     "location",
     "favorite_color",
     "favorite_food",
@@ -60,9 +68,14 @@ TEXT_FIELDS = [
     "zodiac_sign",
     "favorite_character",
     "gaming_system",
+    "platform_ids",
     "currently_playing",
     "instagram",
+    "phone",
     "birthday",
+    "availability_days",
+    "availability_time",
+    "availability_notes",
     "photo_mime_type",
 ]
 
@@ -133,7 +146,32 @@ def session_scope() -> Iterator[Session]:
 
 
 def init_db() -> None:
-    Base.metadata.create_all(get_engine())
+    engine = get_engine()
+    Base.metadata.create_all(engine)
+    _ensure_member_columns(engine)
+
+
+def _ensure_member_columns(engine) -> None:
+    inspector = inspect(engine)
+    if "members" not in inspector.get_table_names():
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("members")}
+    missing_definitions = {
+        "role": "VARCHAR(50)",
+        "platform_ids": "TEXT",
+        "phone": "VARCHAR(50)",
+        "availability_days": "TEXT",
+        "availability_time": "TEXT",
+        "availability_notes": "TEXT",
+        "is_admin": "BOOLEAN NOT NULL DEFAULT FALSE",
+    }
+
+    with engine.begin() as connection:
+        for column_name, column_definition in missing_definitions.items():
+            if column_name in existing_columns:
+                continue
+            connection.execute(text(f"ALTER TABLE members ADD COLUMN {column_name} {column_definition}"))
 
 
 def _sanitize_text(value: Any) -> str | None:
@@ -153,6 +191,7 @@ def _prepare_member_payload(data: dict[str, Any]) -> dict[str, Any]:
         value = data.get(field)
         payload[field] = value if value not in ("", None) else None
 
+    payload["is_admin"] = bool(data.get("is_admin", False))
     payload["photo_bytes"] = data.get("photo_bytes")
     return payload
 
@@ -165,6 +204,7 @@ def _member_to_dict(member: Member) -> dict[str, Any]:
         "nickname": member.nickname,
         "age": member.age,
         "sexuality": member.sexuality,
+        "role": member.role,
         "height_cm": member.height_cm,
         "location": member.location,
         "favorite_color": member.favorite_color,
@@ -175,9 +215,15 @@ def _member_to_dict(member: Member) -> dict[str, Any]:
         "zodiac_sign": member.zodiac_sign,
         "favorite_character": member.favorite_character,
         "gaming_system": member.gaming_system,
+        "platform_ids": member.platform_ids,
         "currently_playing": member.currently_playing,
         "instagram": member.instagram,
+        "phone": member.phone,
         "birthday": member.birthday,
+        "availability_days": member.availability_days,
+        "availability_time": member.availability_time,
+        "availability_notes": member.availability_notes,
+        "is_admin": member.is_admin,
         "photo_bytes": photo_bytes,
         "photo_mime_type": member.photo_mime_type,
         "has_photo": photo_bytes is not None,
@@ -197,12 +243,18 @@ def list_members(search: str = "") -> list[dict[str, Any]]:
                     Member.full_name.ilike(pattern),
                     Member.nickname.ilike(pattern),
                     Member.location.ilike(pattern),
+                    Member.role.ilike(pattern),
                     Member.music_tastes.ilike(pattern),
                     Member.gaming_system.ilike(pattern),
+                    Member.platform_ids.ilike(pattern),
                     Member.currently_playing.ilike(pattern),
                     Member.favorite_food.ilike(pattern),
                     Member.favorite_movies.ilike(pattern),
                     Member.hobbies.ilike(pattern),
+                    Member.phone.ilike(pattern),
+                    Member.availability_days.ilike(pattern),
+                    Member.availability_time.ilike(pattern),
+                    Member.availability_notes.ilike(pattern),
                 )
             )
 
