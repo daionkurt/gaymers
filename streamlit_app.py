@@ -1532,8 +1532,8 @@ def render_profile_page(members: list[dict[str, Any]]) -> None:
         return
 
     render_member_details(member)
+    render_edit_member_form(member)
     if is_admin_session_active(members):
-        render_edit_member_form(member)
         render_delete_member(member, members)
     else:
         st.info("Solo un administrador puede editar o eliminar perfiles.")
