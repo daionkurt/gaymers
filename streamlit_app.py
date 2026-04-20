@@ -817,6 +817,13 @@ def chunk_list(items: list[dict[str, Any]], size: int) -> list[list[dict[str, An
     return [items[index : index + size] for index in range(0, len(items), size)]
 
 
+def sort_members_alphabetically(members: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(
+        members,
+        key=lambda item: ((item.get("full_name") or "").casefold(), (item.get("nickname") or "").casefold()),
+    )
+
+
 def render_app_header(members: list[dict[str, Any]]) -> None:
     st.title(PAGE_TITLE)
     st.caption(
@@ -919,18 +926,12 @@ def render_summary(members: list[dict[str, Any]]) -> None:
     if not members:
         st.info("Todavia no hay miembros registrados. Puedes empezar desde la seccion 'Nuevo miembro'.")
     else:
-        st.markdown("### Miembros en orden alfabetico")
-        alphabetical_members = sorted(
-            members,
-            key=lambda item: ((item.get("full_name") or "").casefold(), (item.get("nickname") or "").casefold()),
-        )
+        st.markdown("### Miembros")
+        alphabetical_members = sort_members_alphabetically(members)
         alphabetical_df = member_table_rows(alphabetical_members)
         st.dataframe(alphabetical_df, width="stretch", hide_index=True)
 
-    admins = sorted(
-        [member for member in members if member.get("is_admin")],
-        key=lambda item: ((item.get("full_name") or "").casefold(), (item.get("nickname") or "").casefold()),
-    )
+    admins = sort_members_alphabetically([member for member in members if member.get("is_admin")])
     st.markdown("### Administradores")
     if not admins:
         st.info("Todavia no hay administradores marcados.")
@@ -1108,7 +1109,7 @@ def render_directory_page(members: list[dict[str, Any]]) -> None:
     )
     photo_only = filter_columns[2].checkbox("Solo con foto")
 
-    filtered_members = filter_members(members, search_text, system_filter, photo_only)
+    filtered_members = sort_members_alphabetically(filter_members(members, search_text, system_filter, photo_only))
 
     st.caption(f"Resultados: {len(filtered_members)}")
     if not filtered_members:
@@ -1137,7 +1138,7 @@ def render_directory_page(members: list[dict[str, Any]]) -> None:
                     st.write(f"Jugando: {value_or_fallback(member.get('currently_playing'))}")
                     instagram_link = instagram_url(member.get("instagram"))
                     if instagram_link:
-                        st.markdown(f"[Instagram]({instagram_link})")
+                        st.markdown(f"[{member.get('instagram')}]({instagram_link})")
 
                     if st.button("Ver perfil", key=f"open_profile_{member['id']}"):
                         open_member_profile(member["id"])
@@ -1398,7 +1399,8 @@ def render_profile_page(members: list[dict[str, Any]]) -> None:
         st.info("No hay perfiles disponibles todavia.")
         return
 
-    member_ids = [member["id"] for member in members]
+    sorted_members = sort_members_alphabetically(members)
+    member_ids = [member["id"] for member in sorted_members]
     selected_id = st.session_state.get("selected_member_id")
 
     if selected_id not in member_ids:
@@ -1409,7 +1411,7 @@ def render_profile_page(members: list[dict[str, Any]]) -> None:
         "Selecciona un miembro",
         options=member_ids,
         index=member_ids.index(selected_id),
-        format_func=lambda member_id: display_name(next(item for item in members if item["id"] == member_id)),
+        format_func=lambda member_id: display_name(next(item for item in sorted_members if item["id"] == member_id)),
     )
     st.session_state["selected_member_id"] = selected_id
 
